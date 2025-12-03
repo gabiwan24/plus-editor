@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endloses Raster Configurator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Variablen */
+        :root {
+            --size: 30px;            
+            --thickness: 3px;        
+            --grid-size: 100px;
+            --col-count: 11; 
+            --plus-color: #ffffff;
+            
+            /* Hintergrund */
+            --bg-color-1: #1500FF;
+            --bg-color-2: #000000;
+            --bg-grad-angle: 225deg; 
+            
+            /* Hintergrundbild */
+            --bg-image-url: none;
+            --bg-x: 0px;
+            --bg-y: 0px;
+            --bg-scale: 1;
+            --bg-opacity: 1;
+            --bg-blend: normal;
+
+            /* Pinsel */
+            --brush-size: 100px;
+            --brush-x: -9999px;
+            --brush-y: -9999px;
+        }
+
+        body {
+            overflow: hidden;
+            user-select: none; 
+        }
+
+        /* Hauptbereich */
+        main {
+            position: relative;
+            background: var(--bg-color-1); 
+            overflow: hidden;
+        }
+
+        main.has-gradient {
+            background: linear-gradient(var(--bg-grad-angle), var(--bg-color-1), var(--bg-color-2));
+        }
+
+        /* Layer 0: Hintergrundbild */
+        #bg-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; 
+        }
+
+        #bg-image-element {
+            display: none; 
+            transform: translate(var(--bg-x), var(--bg-y)) scale(var(--bg-scale));
+            transform-origin: center center;
+            max-width: none; 
+            opacity: var(--bg-opacity);
+            mix-blend-mode: var(--bg-blend);
+        }
+
+        /* Layer 1: Raster */
+        #grid-container {
+            position: relative;
+            z-index: 10; 
+            display: grid;
+            grid-template-columns: repeat(var(--col-count), var(--grid-size));
+            grid-auto-rows: var(--grid-size);
+            gap: 0px;
+            justify-content: center;
+            align-content: center;
+            justify-items: center;
+            align-items: center;
+            width: auto;
+            height: auto;
+            pointer-events: none; 
+        }
+
+        /* Layer 2: UI Overlays */
+        #ui-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 40;
+            pointer-events: none; 
+        }
+
+        /* Pinsel Cursor Visualisierung */
+        #brush-cursor {
+            position: absolute;
+            left: 0; top: 0;
+            width: var(--brush-size);
+            height: var(--brush-size);
+            border: 1px dashed rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transform: translate(calc(var(--brush-x) - 50%), calc(var(--brush-y) - 50%));
+            pointer-events: none;
+            display: none;
+            z-index: 50;
+        }
+
+        /* Visuelle Linie für Verlauf */
+        #grad-line-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: none; 
+        }
+
+        #drop-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.5);
+            border: 4px dashed #fff;
+            z-index: 60;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #fff;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* Plus Symbol */
+        .plus-shape {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: var(--size);
+            height: var(--size);
+            flex-shrink: 0;
+            /* WICHTIG: Transition für weicheres Malgefühl optional, aber hier direkt */
+            /* transform wird per JS gesetzt */
+        }
+        
+        .bar-h, .bar-v {
+            position: absolute;
+            background-color: var(--plus-color);
+        }
+        /* Größe kommt hier initial aus CSS Variablen, wird aber durch scale() am Parent verändert */
+        .bar-h { width: 100%; height: var(--thickness); }
+        .bar-v { height: 100%; width: var(--thickness); }
+        
+        /* Utility */
+        .text-alert { color: #dc2626; font-weight: 700; }
+        
+        /* Cursor Logic */
+        main.is-editing-bg { cursor: move; cursor: grab; }
+        main.is-editing-bg:active { cursor: grabbing; }
+        main.is-editing-grad { cursor: crosshair; }
+        main.is-painting { cursor: none; /* Cursor wird durch Pinselkreis ersetzt */ }
+        
+        .disabled-control { opacity: 0.4; pointer-events: none; filter: grayscale(1); }
+        
+        /* Tool Button Active State */
+        .tool-btn.active {
+            background-color: #2563EB; /* blue-600 */
+            color: white;
+            border-color: #2563EB;
+        }
+    </style>
+</head>
+<body class="flex w-screen h-screen bg-gray-50 font-sans text-gray-800">
+
+    <!-- LINKS: Configurator -->
+    <aside class="w-1/5 min-w-[280px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl">
+        <div class="p-6 border-b border-gray-100">
+            <h1 class="text-xl font-bold text-gray-900">Configurator</h1>
+            <p class="text-xs text-gray-500 mt-1">Zentrales Raster (v9)</p>
+        </div>
+
+        <div class="flex-1 p-6 space-y-8 overflow-y-auto">
+            
+            <!-- RASTER CONFIG -->
+            <div class="space-y-6 opacity-100 transition-opacity" id="raster-config-group">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Basis Raster</h2>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between items-end">
+                        <label id="label-size" class="text-sm font-medium">Größe</label>
+                        <span id="val-size" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">30px</span>
+                    </div>
+                    <input type="range" id="input-size" min="10" max="300" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium">Dicke (%)</label>
+                        <div class="flex items-center gap-2">
+                            <span id="val-thickness-px" class="text-[10px] text-gray-400">(3px)</span>
+                            <span id="val-thickness-percent" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">10%</span>
+                        </div>
+                    </div>
+                    <input type="range" id="input-thickness" min="1" max="100" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium">Rastermaß</label>
+                        <span id="val-spacing" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100px</span>
+                    </div>
+                    <input type="range" id="input-spacing" min="20" max="250" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600">
+                </div>
+            </div>
+
+            <hr class="border-gray-100">
+
+            <!-- HINTERGRUND FARBE -->
+            <div class="space-y-4">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Hintergrund Farbe</h2>
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium">Farbe 1</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="input-color-1" value="#1500FF" class="w-8 h-8 rounded border-0 cursor-pointer p-0 bg-transparent">
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 pt-2">
+                    <input type="checkbox" id="check-gradient" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+                    <label for="check-gradient" class="text-sm font-medium select-none cursor-pointer">Verlauf aktivieren</label>
+                </div>
+                <div id="gradient-options" class="space-y-4 hidden">
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium">Farbe 2</label>
+                        <input type="color" id="input-color-2" value="#000000" class="w-8 h-8 rounded border-0 cursor-pointer p-0 bg-transparent">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="check-grad-edit" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+                        <label for="check-grad-edit" class="text-sm font-medium select-none cursor-pointer">Verlauf bearbeiten</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-gray-100">
+
+            <!-- HINTERGRUND BILD -->
+            <div class="space-y-4">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Hintergrundbild (Drag & Drop)</h2>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="check-bg-edit" disabled class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50">
+                    <label id="label-bg-edit" for="check-bg-edit" class="text-sm font-medium select-none cursor-pointer opacity-50">Bild bearbeiten</label>
+                </div>
+                <div id="bg-controls" class="space-y-4 opacity-50 pointer-events-none transition-opacity">
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm font-medium">Bild Zoom</label>
+                            <span id="val-bg-scale" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">1.0x</span>
+                        </div>
+                        <input type="range" id="input-bg-scale" min="0.1" max="5" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="check-bg-multiply" class="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
+                        <label for="check-bg-multiply" class="text-sm font-medium select-none cursor-pointer">Multiplizieren</label>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm font-medium">Transparenz Bild</label>
+                            <span id="val-bg-opacity" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100%</span>
+                        </div>
+                        <input type="range" id="input-bg-opacity" min="0" max="100" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-600">
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-gray-100">
+
+            <!-- RASTER EDITIERMODUS (Verschoben und angepasst) -->
+            <div class="space-y-4">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Raster-Editiermodus</h2>
+                
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="check-edit-mode" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="check-edit-mode" class="text-sm font-medium select-none cursor-pointer">Mal-Modus aktivieren</label>
+                </div>
+
+                <!-- Controls für Edit Mode (hidden wenn inaktiv) -->
+                <div id="edit-mode-controls" class="space-y-4 hidden">
+                    
+                    <!-- Pinselgröße -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm font-medium">Pinselgröße</label>
+                            <span id="val-brush-size" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100px</span>
+                        </div>
+                        <input type="range" id="input-brush-size" min="20" max="500" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    </div>
+
+                    <!-- Tools -->
+                    <div class="flex justify-between gap-2">
+                        <button id="btn-tool-plus" class="tool-btn active flex-1 py-2 border-2 border-gray-200 rounded font-bold hover:bg-gray-100 transition-colors" title="Vergrößern">+</button>
+                        <button id="btn-tool-minus" class="tool-btn flex-1 py-2 border-2 border-gray-200 rounded font-bold hover:bg-gray-100 transition-colors" title="Verkleinern">-</button>
+                        <button id="btn-tool-delete" class="tool-btn flex-1 py-2 border-2 border-gray-200 rounded font-bold hover:bg-gray-100 transition-colors text-red-500" title="Löschen (Skalierung 0)">X</button>
+                    </div>
+
+                    <!-- Einfluss -->
+                    <div class="flex items-center space-x-2 pt-1">
+                        <input type="checkbox" id="check-influence" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                        <label for="check-influence" class="text-sm font-medium select-none cursor-pointer">Einfluss (Weiche Kante)</label>
+                    </div>
+                    
+                    <p class="text-[10px] text-gray-400 leading-tight">Maus gedrückt halten zum Malen (Skalieren).</p>
+                </div>
+            </div>
+
+            <hr class="border-gray-100">
+
+            <!-- EXPORT -->
+            <div class="space-y-4">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Export</h2>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="check-export-bg" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="check-export-bg" class="text-sm font-medium select-none cursor-pointer">Mit Hintergrund</label>
+                </div>
+                <button id="btn-export" class="w-full py-2 px-4 bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Als SVG speichern
+                </button>
+            </div>
+        </div>
+        <div class="p-6 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">
+            Items: <span id="stat-items">0</span>
+        </div>
+    </aside>
+
+    <!-- RECHTS: Canvas Bereich -->
+    <main id="main-area" class="w-4/5 flex items-center justify-center">
+        
+        <!-- Feedback Overlay -->
+        <div id="drop-overlay">Bild hier ablegen</div>
+
+        <!-- Layer 0: Background Image -->
+        <div id="bg-layer">
+            <img id="bg-image-element" src="" alt="Background">
+        </div>
+
+        <!-- Layer 1: Grid -->
+        <div id="grid-container">
+            <!-- Items via JS -->
+        </div>
+
+        <!-- Layer 2: UI Overlay -->
+        <div id="ui-layer">
+            <svg id="grad-line-svg">
+                <line id="grad-line-visual" x1="0" y1="0" x2="0" y2="0" stroke="white" stroke-width="2" stroke-dasharray="4" />
+                <circle id="grad-start-point" cx="0" cy="0" r="4" fill="white" />
+                <circle id="grad-end-point" cx="0" cy="0" r="4" fill="white" />
+            </svg>
+            <!-- Brush Cursor -->
+            <div id="brush-cursor"></div>
+        </div>
+    </main>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            // Raster
+            size: 30,
+            thicknessPercent: 10,
+            spacing: 100,
+            
+            // Edit Mode
+            isPaintMode: false,
+            brushSize: 100,
+            activeTool: 'plus', // 'plus', 'minus', 'delete'
+            useInfluence: false,
+            modifiedCells: new Map(), // Key: "x,y", Value: scaleFactor (default 1.0)
+            isPainting: false, 
+
+            // Hintergrund
+            bgColor1: '#1500FF',
+            bgColor2: '#000000',
+            hasGradient: false,
+            gradientAngle: 225, 
+            
+            // Bild
+            bgImageSrc: null,
+            bgX: 0, bgY: 0, bgScale: 1,
+            bgMultiply: false, bgOpacity: 100,
+            
+            // Modi
+            isEditingBg: false,
+            isEditingGrad: false,
+            
+            // Maus
+            isDragging: false,
+            startX: 0, startY: 0,
+            lastMouseX: 0, lastMouseY: 0,
+            mouseX: 0, mouseY: 0 // Für Pinselposition
+        };
+
+        // --- DOM Elements ---
+        const ui = {
+            root: document.documentElement,
+            mainArea: document.getElementById('main-area'),
+            dropOverlay: document.getElementById('drop-overlay'),
+            gridContainer: document.getElementById('grid-container'),
+            
+            // Edit Mode UI
+            checkEditMode: document.getElementById('check-edit-mode'),
+            editModeControls: document.getElementById('edit-mode-controls'),
+            inputBrushSize: document.getElementById('input-brush-size'),
+            valBrushSize: document.getElementById('val-brush-size'),
+            btnToolPlus: document.getElementById('btn-tool-plus'),
+            btnToolMinus: document.getElementById('btn-tool-minus'),
+            btnToolDelete: document.getElementById('btn-tool-delete'),
+            checkInfluence: document.getElementById('check-influence'),
+            brushCursor: document.getElementById('brush-cursor'),
+            rasterConfigGroup: document.getElementById('raster-config-group'),
+
+            // Raster Inputs
+            inputSize: document.getElementById('input-size'),
+            inputThickness: document.getElementById('input-thickness'),
+            inputSpacing: document.getElementById('input-spacing'),
+            
+            // Farbe/Hintergrund
+            inputColor1: document.getElementById('input-color-1'),
+            inputColor2: document.getElementById('input-color-2'),
+            checkGradient: document.getElementById('check-gradient'),
+            gradientOptions: document.getElementById('gradient-options'),
+            checkGradEdit: document.getElementById('check-grad-edit'),
+            
+            // UI Layer
+            gradLineSvg: document.getElementById('grad-line-svg'),
+            gradLineVisual: document.getElementById('grad-line-visual'),
+            gradStartPoint: document.getElementById('grad-start-point'),
+            gradEndPoint: document.getElementById('grad-end-point'),
+
+            // Bild UI
+            checkBgEdit: document.getElementById('check-bg-edit'),
+            labelBgEdit: document.getElementById('label-bg-edit'),
+            bgControls: document.getElementById('bg-controls'),
+            inputBgScale: document.getElementById('input-bg-scale'),
+            valBgScale: document.getElementById('val-bg-scale'),
+            checkBgMultiply: document.getElementById('check-bg-multiply'),
+            inputBgOpacity: document.getElementById('input-bg-opacity'),
+            valBgOpacity: document.getElementById('val-bg-opacity'),
+            bgImageElement: document.getElementById('bg-image-element'),
+            
+            // Export
+            checkExportBg: document.getElementById('check-export-bg'),
+            btnExport: document.getElementById('btn-export'),
+            
+            // Labels
+            labelSize: document.getElementById('label-size'),
+            valSize: document.getElementById('val-size'),
+            valThicknessPercent: document.getElementById('val-thickness-percent'),
+            valThicknessPx: document.getElementById('val-thickness-px'),
+            valSpacing: document.getElementById('val-spacing'),
+            statItems: document.getElementById('stat-items'),
+        };
+
+        // ==========================================
+        // PAINTING LOGIC
+        // ==========================================
+
+        function updatePaintLoop() {
+            if (state.isPaintMode && state.isPainting) {
+                applyBrush(state.mouseX, state.mouseY);
+                requestAnimationFrame(updatePaintLoop);
+            }
+        }
+
+        function applyBrush(mx, my) {
+            const activeGridSize = Math.max(state.spacing, state.size);
+            const gridRect = ui.gridContainer.getBoundingClientRect();
+            
+            const localMx = mx - gridRect.left;
+            const localMy = my - gridRect.top;
+            
+            const radius = state.brushSize / 2;
+            const radiusSq = radius * radius;
+            
+            const children = ui.gridContainer.children;
+            
+            // MODIFIED: Wachstumsrate stark reduziert für langsameres Malen
+            // Wir ändern jetzt den Scale-Faktor (Basis 1.0)
+            const growthRate = 0.01; 
+
+            for (let i = 0; i < children.length; i++) {
+                const cell = children[i];
+                
+                const cx = cell.offsetLeft + (activeGridSize / 2);
+                const cy = cell.offsetTop + (activeGridSize / 2);
+                
+                const dx = cx - localMx;
+                const dy = cy - localMy;
+                const distSq = dx*dx + dy*dy;
+                
+                if (distSq < radiusSq) {
+                    const logicX = parseInt(cell.dataset.x);
+                    const logicY = parseInt(cell.dataset.y);
+                    const key = `${logicX},${logicY}`;
+                    
+                    // Current SCALE (Default 1.0)
+                    let currentScale = state.modifiedCells.has(key) 
+                        ? state.modifiedCells.get(key) 
+                        : 1.0;
+                    
+                    let influence = 1;
+                    if (state.useInfluence) {
+                        const dist = Math.sqrt(distSq);
+                        influence = 1 - (dist / radius);
+                        if (influence < 0) influence = 0;
+                    }
+
+                    let newScale = currentScale;
+
+                    if (state.activeTool === 'plus') {
+                        newScale += growthRate * influence;
+                    } else if (state.activeTool === 'minus') {
+                        newScale -= growthRate * influence;
+                        if (newScale < 0) newScale = 0;
+                    } else if (state.activeTool === 'delete') {
+                        // Löschen reduziert Skalierung gegen 0
+                        if (state.useInfluence) {
+                            newScale = currentScale * (1 - (0.1 * influence)); 
+                            if (newScale < 0.05) newScale = 0;
+                        } else {
+                            newScale = 0;
+                        }
+                    }
+                    
+                    state.modifiedCells.set(key, newScale);
+                    updateCellVisual(cell, newScale);
+                }
+            }
+        }
+
+        function updateCellVisual(cell, scale) {
+            // MODIFIED: Nutzen von CSS Transform Scale statt Breite/Höhe
+            cell.style.transform = `scale(${scale})`;
+        }
+        
+        function resetCellVisual(cell) {
+            const key = `${cell.dataset.x},${cell.dataset.y}`;
+            let scale = 1.0;
+            if (state.modifiedCells.has(key)) {
+                scale = state.modifiedCells.get(key);
+            }
+            updateCellVisual(cell, scale);
+        }
+
+        // ==========================================
+        // CORE GRID LOGIC
+        // ==========================================
+
+        function updateVisuals() {
+            const absoluteThickness = (state.size * state.thicknessPercent) / 100;
+            const activeGridSize = Math.max(state.spacing, state.size);
+            const isGridExpanded = state.size > state.spacing;
+
+            ui.root.style.setProperty('--size', `${state.size}px`);
+            ui.root.style.setProperty('--thickness', `${absoluteThickness}px`);
+            ui.root.style.setProperty('--grid-size', `${activeGridSize}px`);
+            
+            ui.root.style.setProperty('--bg-color-1', state.bgColor1);
+            ui.root.style.setProperty('--bg-color-2', state.bgColor2);
+            ui.root.style.setProperty('--bg-grad-angle', `${state.gradientAngle}deg`);
+            
+            ui.root.style.setProperty('--bg-blend', state.bgMultiply ? 'multiply' : 'normal');
+            ui.root.style.setProperty('--bg-opacity', state.bgOpacity / 100);
+
+            ui.root.style.setProperty('--brush-size', `${state.brushSize}px`);
+
+            if (state.hasGradient) {
+                ui.mainArea.classList.add('has-gradient');
+                ui.gradientOptions.classList.remove('hidden');
+            } else {
+                ui.mainArea.classList.remove('has-gradient');
+                ui.gradientOptions.classList.add('hidden');
+            }
+
+            ui.valSize.innerText = `${state.size}px`;
+            ui.valThicknessPercent.innerText = `${state.thicknessPercent}%`;
+            ui.valThicknessPx.innerText = `(${Math.round(absoluteThickness)}px)`;
+            ui.valSpacing.innerText = `${state.spacing}px`;
+            ui.valBgOpacity.innerText = `${state.bgOpacity}%`;
+
+            if (isGridExpanded) ui.labelSize.classList.add('text-alert');
+            else ui.labelSize.classList.remove('text-alert');
+
+            // Update DOM Styles
+            const children = ui.gridContainer.children;
+            for(let cell of children) {
+                resetCellVisual(cell);
+            }
+
+            recalcGridGeometry();
+        }
+
+        function recalcGridGeometry() {
+            const activeGridSize = Math.max(state.spacing, state.size);
+            const viewportWidth = ui.mainArea.clientWidth || window.innerWidth * 0.8;
+            const viewportHeight = ui.mainArea.clientHeight || window.innerHeight;
+
+            let cols = Math.ceil(viewportWidth / activeGridSize);
+            if (cols % 2 === 0) cols += 1; 
+            cols += 4; 
+            let rows = Math.ceil(viewportHeight / activeGridSize);
+            if (rows % 2 === 0) rows += 1;
+            rows += 4;
+
+            ui.root.style.setProperty('--col-count', cols);
+            const totalCount = cols * rows;
+            const safeCount = Math.min(totalCount, 5000); 
+
+            ui.statItems.innerText = safeCount;
+
+            const currentCount = ui.gridContainer.childElementCount;
+            if (currentCount !== safeCount || ui.gridContainer.dataset.cols != cols) {
+                renderGridItems(safeCount, cols, rows);
+                ui.gridContainer.dataset.cols = cols;
+            }
+        }
+
+        function renderGridItems(count, cols, rows) {
+            const fragment = document.createDocumentFragment();
+            ui.gridContainer.innerHTML = '';
+            
+            const centerCol = Math.floor(cols / 2);
+            const centerRow = Math.floor(rows / 2);
+            
+            for (let i = 0; i < count; i++) {
+                const c = i % cols;
+                const r = Math.floor(i / cols);
+                
+                const logicX = c - centerCol;
+                const logicY = r - centerRow;
+                
+                const div = document.createElement('div');
+                div.className = 'plus-shape';
+                div.dataset.x = logicX;
+                div.dataset.y = logicY;
+                
+                // Bars erstellen
+                const barH = document.createElement('div');
+                barH.className = 'bar-h';
+                const barV = document.createElement('div');
+                barV.className = 'bar-v';
+                
+                div.appendChild(barH);
+                div.appendChild(barV);
+                
+                // Check if modified
+                const key = `${logicX},${logicY}`;
+                if (state.modifiedCells.has(key)) {
+                    const scale = state.modifiedCells.get(key);
+                    div.style.transform = `scale(${scale})`;
+                }
+
+                fragment.appendChild(div);
+            }
+            ui.gridContainer.appendChild(fragment);
+        }
+
+        // ==========================================
+        // INTERACTION & EVENTS
+        // ==========================================
+        
+        ui.checkEditMode.addEventListener('change', (e) => {
+            state.isPaintMode = e.target.checked;
+            if (state.isPaintMode) {
+                ui.editModeControls.classList.remove('hidden');
+                ui.mainArea.classList.add('is-painting');
+                ui.brushCursor.style.display = 'block';
+                ui.checkBgEdit.checked = false;
+                ui.checkGradEdit.checked = false;
+                state.isEditingBg = false;
+                state.isEditingGrad = false;
+                updateInteractionStates();
+            } else {
+                ui.editModeControls.classList.add('hidden');
+                ui.mainArea.classList.remove('is-painting');
+                ui.brushCursor.style.display = 'none';
+            }
+        });
+
+        function setTool(tool) {
+            state.activeTool = tool;
+            ui.btnToolPlus.classList.remove('active');
+            ui.btnToolMinus.classList.remove('active');
+            ui.btnToolDelete.classList.remove('active');
+            if (tool === 'plus') ui.btnToolPlus.classList.add('active');
+            if (tool === 'minus') ui.btnToolMinus.classList.add('active');
+            if (tool === 'delete') ui.btnToolDelete.classList.add('active');
+        }
+        ui.btnToolPlus.addEventListener('click', () => setTool('plus'));
+        ui.btnToolMinus.addEventListener('click', () => setTool('minus'));
+        ui.btnToolDelete.addEventListener('click', () => setTool('delete'));
+
+        ui.inputBrushSize.addEventListener('input', (e) => {
+            state.brushSize = parseInt(e.target.value);
+            ui.valBrushSize.innerText = state.brushSize + "px";
+            updateVisuals();
+        });
+        
+        ui.checkInfluence.addEventListener('change', (e) => {
+            state.useInfluence = e.target.checked;
+        });
+
+        ui.mainArea.addEventListener('pointermove', (e) => {
+            const rect = ui.mainArea.getBoundingClientRect();
+            state.mouseX = e.clientX;
+            state.mouseY = e.clientY;
+            
+            const relX = e.clientX - rect.left;
+            const relY = e.clientY - rect.top;
+            ui.root.style.setProperty('--brush-x', `${relX}px`);
+            ui.root.style.setProperty('--brush-y', `${relY}px`);
+
+            if (!state.isPaintMode && state.isDragging) {
+                if (state.isEditingGrad) {
+                    const dx = e.clientX - state.startX;
+                    const dy = e.clientY - state.startY;
+                    const currentRelX = e.clientX - rect.left;
+                    const currentRelY = e.clientY - rect.top;
+                    ui.gradLineVisual.setAttribute('x2', currentRelX);
+                    ui.gradLineVisual.setAttribute('y2', currentRelY);
+                    ui.gradEndPoint.setAttribute('cx', currentRelX);
+                    ui.gradEndPoint.setAttribute('cy', currentRelY);
+                    const rad = Math.atan2(dy, dx);
+                    let deg = rad * (180 / Math.PI) + 90; 
+                    state.gradientAngle = Math.round(deg);
+                    updateVisuals();
+                } else if (state.isEditingBg && state.bgImageSrc) {
+                    const dx = e.clientX - state.lastMouseX;
+                    const dy = e.clientY - state.lastMouseY;
+                    state.bgX += dx;
+                    state.bgY += dy;
+                    state.lastMouseX = e.clientX;
+                    state.lastMouseY = e.clientY;
+                    updateBgTransform();
+                }
+            }
+        });
+
+        ui.mainArea.addEventListener('pointerdown', (e) => {
+            if (state.isPaintMode) {
+                state.isPainting = true;
+                updatePaintLoop();
+                applyBrush(e.clientX, e.clientY);
+            } else {
+                state.isDragging = true;
+                state.startX = e.clientX;
+                state.startY = e.clientY;
+                if (state.isEditingGrad) {
+                    const rect = ui.mainArea.getBoundingClientRect();
+                    const relX = e.clientX - rect.left;
+                    const relY = e.clientY - rect.top;
+                    ui.gradLineSvg.style.display = 'block';
+                    ui.gradLineVisual.setAttribute('x1', relX); ui.gradLineVisual.setAttribute('y1', relY);
+                    ui.gradLineVisual.setAttribute('x2', relX); ui.gradLineVisual.setAttribute('y2', relY);
+                    ui.gradStartPoint.setAttribute('cx', relX); ui.gradStartPoint.setAttribute('cy', relY);
+                    ui.gradEndPoint.setAttribute('cx', relX); ui.gradEndPoint.setAttribute('cy', relY);
+                } else if (state.isEditingBg) {
+                    state.lastMouseX = e.clientX;
+                    state.lastMouseY = e.clientY;
+                }
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            state.isDragging = false;
+            state.isPainting = false;
+            if (state.isEditingGrad) ui.gradLineSvg.style.display = 'none';
+        });
+
+        function updateInteractionStates() {
+            if (state.isEditingGrad) {
+                ui.mainArea.classList.add('is-editing-grad');
+                ui.mainArea.classList.remove('is-editing-bg');
+                ui.checkBgEdit.disabled = true;
+                ui.labelBgEdit.classList.add('opacity-50');
+            } else {
+                ui.mainArea.classList.remove('is-editing-grad');
+                if (state.bgImageSrc && !state.isPaintMode) { 
+                    ui.checkBgEdit.disabled = false;
+                    ui.labelBgEdit.classList.remove('opacity-50');
+                    if (ui.checkBgEdit.checked) {
+                        ui.mainArea.classList.add('is-editing-bg');
+                        ui.bgControls.classList.remove('opacity-50', 'pointer-events-none');
+                        state.isEditingBg = true;
+                    }
+                }
+            }
+            if (!state.isEditingGrad && state.isEditingBg && !state.isPaintMode) {
+                ui.mainArea.classList.add('is-editing-bg');
+            } else if (!state.isEditingGrad) {
+                 ui.mainArea.classList.remove('is-editing-bg');
+            }
+        }
+        function deactivateGradientMode() {
+            if (state.isEditingGrad) {
+                state.isEditingGrad = false;
+                ui.checkGradEdit.checked = false;
+                updateInteractionStates();
+            }
+        }
+        function updateBgTransform() {
+            ui.root.style.setProperty('--bg-x', `${state.bgX}px`);
+            ui.root.style.setProperty('--bg-y', `${state.bgY}px`);
+            ui.root.style.setProperty('--bg-scale', state.bgScale);
+            ui.valBgScale.innerText = state.bgScale.toFixed(1) + 'x';
+        }
+
+        ui.inputSize.addEventListener('input', (e) => { state.size = parseInt(e.target.value); updateVisuals(); });
+        ui.inputThickness.addEventListener('input', (e) => { state.thicknessPercent = parseInt(e.target.value); updateVisuals(); });
+        ui.inputSpacing.addEventListener('input', (e) => { state.spacing = parseInt(e.target.value); updateVisuals(); });
+        ui.inputColor1.addEventListener('input', (e) => { state.bgColor1 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        ui.inputColor2.addEventListener('input', (e) => { state.bgColor2 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        ui.checkGradient.addEventListener('change', (e) => { state.hasGradient = e.target.checked; updateVisuals(); });
+        ui.checkGradEdit.addEventListener('change', (e) => { state.isEditingGrad = e.target.checked; updateInteractionStates(); });
+        ui.checkBgEdit.addEventListener('change', (e) => { state.isEditingBg = e.target.checked; if (e.target.checked) ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); else ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); updateInteractionStates(); });
+        ui.inputBgScale.addEventListener('input', (e) => { state.bgScale = parseFloat(e.target.value); updateBgTransform(); });
+        ui.checkBgMultiply.addEventListener('change', (e) => { state.bgMultiply = e.target.checked; updateVisuals(); });
+        ui.inputBgOpacity.addEventListener('input', (e) => { state.bgOpacity = parseInt(e.target.value); updateVisuals(); });
+
+        ['dragenter', 'dragover'].forEach(ev => ui.mainArea.addEventListener(ev, e => { e.preventDefault(); ui.dropOverlay.style.display = 'flex'; }));
+        ['dragleave', 'drop'].forEach(ev => ui.mainArea.addEventListener(ev, e => { e.preventDefault(); ui.dropOverlay.style.display = 'none'; }));
+        ui.mainArea.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.bgImageSrc = evt.target.result;
+                        ui.bgImageElement.src = state.bgImageSrc;
+                        ui.bgImageElement.style.display = 'block';
+                        const scale = Math.max(ui.mainArea.clientWidth / img.width, ui.mainArea.clientHeight / img.height);
+                        state.bgScale = scale; state.bgX = 0; state.bgY = 0;
+                        ui.inputBgScale.value = scale;
+                        updateBgTransform();
+                        ui.checkBgEdit.disabled = false;
+                        ui.labelBgEdit.classList.remove('opacity-50');
+                    };
+                    img.src = evt.target.result;
+                };
+                reader.readAsDataURL(files[0]);
+            }
+        });
+
+        // EXPORT UPDATE - SCALING LOGIC
+        ui.btnExport.addEventListener('click', () => {
+            const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight;
+            // Grundwerte (ohne Skalierung)
+            const baseSize = state.size;
+            const baseTh = (state.size * state.thicknessPercent) / 100;
+            const incBg = ui.checkExportBg.checked;
+            
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+            
+            if (incBg && state.hasGradient) {
+                const ang = state.gradientAngle - 90;
+                svg += `<defs><linearGradient id="g" gradientTransform="rotate(${ang}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.bgColor1}"/><stop offset="100%" stop-color="${state.bgColor2}"/></linearGradient></defs>`;
+            }
+            if (incBg) {
+                svg += `<rect width="100%" height="100%" fill="${state.hasGradient ? 'url(#g)' : state.bgColor1}"/>`;
+                if (state.bgImageSrc) {
+                    const nw = ui.bgImageElement.naturalWidth; const nh = ui.bgImageElement.naturalHeight;
+                    const blendStyle = state.bgMultiply ? 'mix-blend-mode: multiply;' : '';
+                    const opVal = state.bgOpacity / 100;
+                    svg += `<g transform="translate(${w/2 + state.bgX}, ${h/2 + state.bgY}) scale(${state.bgScale})" style="${blendStyle}" opacity="${opVal}"><image href="${state.bgImageSrc}" x="${-nw/2}" y="${-nh/2}" width="${nw}" height="${nh}"/></g>`;
+                }
+            }
+            
+            const ags = Math.max(state.spacing, state.size);
+            const sx = Math.ceil((w/2)/ags)+1; const sy = Math.ceil((h/2)/ags)+1;
+            svg += `<g fill="#ffffff">`;
+            for(let x=-sx; x<=sx; x++) for(let y=-sy; y<=sy; y++) {
+                const px = w/2 + x*ags; const py = h/2 + y*ags;
+                
+                // Scale Faktor abrufen
+                let scale = 1.0;
+                const key = `${x},${y}`;
+                if (state.modifiedCells.has(key)) {
+                    scale = state.modifiedCells.get(key);
+                }
+                
+                if (scale > 0.05) {
+                    const currentSize = baseSize * scale;
+                    const currentTh = baseTh * scale;
+                    
+                    svg += `<rect x="${px-currentSize/2}" y="${py-currentTh/2}" width="${currentSize}" height="${currentTh}"/><rect x="${px-currentTh/2}" y="${py-currentSize/2}" width="${currentTh}" height="${currentSize}"/>`;
+                }
+            }
+            svg += `</g></svg>`;
+            
+            const b = new Blob([svg], {type: 'image/svg+xml'});
+            const u = URL.createObjectURL(b); const a = document.createElement('a');
+            a.href = u; a.download = 'raster.svg'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+
+        window.addEventListener('resize', () => recalcGridGeometry());
+        updateVisuals();
+    </script>
+</body>
+</html>
