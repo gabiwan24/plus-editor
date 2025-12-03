@@ -40,7 +40,7 @@
             gap: 0px;
             justify-content: center; align-content: center; justify-items: center; align-items: center;
             width: auto; height: auto; pointer-events: none; 
-            will-change: transform;
+            /* will-change: transform entfernt, da wir jetzt Layout-Properties ändern */
         }
 
         #ui-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
@@ -53,87 +53,74 @@
         #grad-line-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
         #drop-overlay { display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.5); border: 4px dashed #fff; z-index: 60; align-items: center; justify-content: center; font-size: 2rem; color: #fff; font-weight: bold; pointer-events: none; }
 
+        /* WICHTIGE ÄNDERUNG FÜR SCHÄRFE */
         .plus-shape {
             position: relative; display: flex; align-items: center; justify-content: center;
-            width: var(--size); height: var(--size); flex-shrink: 0;
-            --th-multi: 1; will-change: transform;
+            flex-shrink: 0;
+            
+            /* Default Werte */
+            --local-scale: 1;
+            --th-multi: 1;
+            
+            /* Berechnung der tatsächlichen Größe basierend auf Scale */
+            /* Dadurch rendert der Browser die Box in voller Auflösung neu */
+            width: calc(var(--size) * var(--local-scale));
+            height: calc(var(--size) * var(--local-scale));
         }
+        
         .bar-h, .bar-v { position: absolute; background-color: var(--plus-color); }
-        .bar-h { width: 100%; height: calc(var(--thickness) * var(--th-multi)); }
-        .bar-v { height: 100%; width: calc(var(--thickness) * var(--th-multi)); }
+        
+        /* Dicke skaliert jetzt auch mathematisch mit */
+        .bar-h { 
+            width: 100%; 
+            height: calc(var(--thickness) * var(--th-multi) * var(--local-scale)); 
+        }
+        .bar-v { 
+            height: 100%; 
+            width: calc(var(--thickness) * var(--th-multi) * var(--local-scale)); 
+        }
         
         .text-alert { color: #dc2626; font-weight: 700; }
         main.is-editing-bg { cursor: move; cursor: grab; } main.is-editing-bg:active { cursor: grabbing; }
         main.is-editing-grad { cursor: crosshair; } main.is-painting { cursor: none; }
         .disabled-control { opacity: 0.4; pointer-events: none; filter: grayscale(1); }
         .tool-btn.active { background-color: #2563EB; color: white; border-color: #2563EB; }
+
+        /* Sidebar Transition */
+        #sidebar { transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; will-change: width, transform; }
+        #sidebar.collapsed { width: 0 !important; min-width: 0 !important; transform: translateX(-100%); overflow: hidden; border: none; }
+        @media (min-aspect-ratio: 1/1) { #sidebar { width: 10%; min-width: 200px; } }
+        
+        #btn-toggle-menu { position: absolute; top: 10px; left: 10px; z-index: 50; background: white; padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; transition: left 0.3s ease; }
+        #sidebar.collapsed + main #btn-toggle-menu svg { transform: rotate(180deg); }
     </style>
 </head>
 <body class="flex w-screen h-screen bg-gray-50 font-sans text-gray-800">
 
-    <aside class="w-1/5 min-w-[280px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl">
-        <div class="p-6 border-b border-gray-100">
-            <h1 class="text-xl font-bold text-gray-900">Configurator</h1>
-            <p class="text-xs text-gray-500 mt-1">Zentrales Raster (v11.2 Fixed)</p>
+    <aside id="sidebar" class="w-1/5 min-w-[280px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl relative">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+            <div><h1 class="text-xl font-bold text-gray-900 leading-tight">Configurator</h1><p class="text-xs text-gray-500 mt-1">Zentrales Raster (v13 Sharp)</p></div>
+            <button id="btn-close-sidebar" class="text-gray-400 hover:text-gray-700"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
         </div>
 
         <div class="flex-1 p-6 space-y-8 overflow-y-auto">
-            
-            <!-- Basis Raster -->
             <div class="space-y-6" id="raster-config-group">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Basis Raster</h2>
-                <div class="space-y-2">
-                    <div class="flex justify-between items-end">
-                        <label id="label-size" class="text-sm font-medium">Größe</label>
-                        <span id="val-size" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">30px</span>
-                    </div>
-                    <input type="range" id="input-size" min="10" max="300" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
-                </div>
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <label class="text-sm font-medium">Dicke (%)</label>
-                        <div class="flex items-center gap-2">
-                            <span id="val-thickness-px" class="text-[10px] text-gray-400">(3px)</span>
-                            <span id="val-thickness-percent" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">10%</span>
-                        </div>
-                    </div>
-                    <input type="range" id="input-thickness" min="1" max="100" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
-                </div>
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center"><label class="text-sm font-medium">Rastermaß</label><span id="val-spacing" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100px</span></div>
-                    <input type="range" id="input-spacing" min="20" max="250" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600">
-                </div>
+                <div class="space-y-2"><div class="flex justify-between items-end"><label id="label-size" class="text-sm font-medium">Größe</label><span id="val-size" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">30px</span></div><input type="range" id="input-size" min="10" max="300" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"></div>
+                <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Dicke (%)</label><div class="flex items-center gap-2"><span id="val-thickness-px" class="text-[10px] text-gray-400">(3px)</span><span id="val-thickness-percent" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">10%</span></div></div><input type="range" id="input-thickness" min="1" max="100" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"></div>
+                <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Rastermaß</label><span id="val-spacing" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100px</span></div><input type="range" id="input-spacing" min="20" max="250" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"></div>
             </div>
-
             <hr class="border-gray-100">
-
-            <!-- Animation -->
             <div class="space-y-4">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Animation</h2>
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" id="check-animation" class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
-                    <label for="check-animation" class="text-sm font-medium select-none cursor-pointer">Animation aktivieren</label>
-                </div>
+                <div class="flex items-center space-x-2"><input type="checkbox" id="check-animation" class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"><label for="check-animation" class="text-sm font-medium select-none cursor-pointer">Animation aktivieren</label></div>
                 <div id="anim-controls" class="space-y-4 hidden pl-2 border-l-2 border-orange-100">
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Intensität</label><span id="val-anim-intensity" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">50%</span></div>
-                        <input type="range" id="input-anim-intensity" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Zufall</label><span id="val-anim-random" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">20%</span></div>
-                        <input type="range" id="input-anim-random" min="0" max="100" value="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Tempo</label><span id="val-anim-speed" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">1.5x</span></div>
-                        <!-- Tempo min auf 1 erhöht -->
-                        <input type="range" id="input-anim-speed" min="1" max="50" value="15" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
-                    </div>
+                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Intensität</label><span id="val-anim-intensity" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">50%</span></div><input type="range" id="input-anim-intensity" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"></div>
+                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Zufall</label><span id="val-anim-random" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">20%</span></div><input type="range" id="input-anim-random" min="0" max="100" value="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"></div>
+                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Tempo</label><span id="val-anim-speed" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">1.5x</span></div><input type="range" id="input-anim-speed" min="1" max="50" value="15" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"></div>
                 </div>
             </div>
-
             <hr class="border-gray-100">
-
-            <!-- Hintergrund Farbe -->
             <div class="space-y-4">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Hintergrund Farbe</h2>
                 <div class="flex items-center justify-between"><label class="text-sm font-medium">Farbe 1</label><input type="color" id="input-color-1" value="#1500FF" class="w-8 h-8 rounded border-0 cursor-pointer p-0 bg-transparent"></div>
@@ -143,10 +130,7 @@
                     <div class="flex items-center space-x-2"><input type="checkbox" id="check-grad-edit" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"><label for="check-grad-edit" class="text-sm font-medium select-none cursor-pointer">Verlauf bearbeiten</label></div>
                 </div>
             </div>
-
             <hr class="border-gray-100">
-
-            <!-- Hintergrund Bild -->
             <div class="space-y-4">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Hintergrundbild (Drag & Drop)</h2>
                 <div class="flex items-center space-x-2"><input type="checkbox" id="check-bg-edit" disabled class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50"><label id="label-bg-edit" for="check-bg-edit" class="text-sm font-medium select-none cursor-pointer opacity-50">Bild bearbeiten</label></div>
@@ -156,10 +140,7 @@
                     <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Transparenz Bild</label><span id="val-bg-opacity" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100%</span></div><input type="range" id="input-bg-opacity" min="0" max="100" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-600"></div>
                 </div>
             </div>
-
             <hr class="border-gray-100">
-
-            <!-- Raster Editiermodus -->
             <div class="space-y-4">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Raster-Editiermodus</h2>
                 <div class="flex items-center space-x-2"><input type="checkbox" id="check-edit-mode" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-edit-mode" class="text-sm font-medium select-none cursor-pointer">Mal-Modus aktivieren</label></div>
@@ -177,10 +158,7 @@
                     <div class="flex items-center space-x-2 pt-1"><input type="checkbox" id="check-influence" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-influence" class="text-sm font-medium select-none cursor-pointer">Einfluss (Weiche Kante)</label></div>
                 </div>
             </div>
-
             <hr class="border-gray-100">
-
-            <!-- Export -->
             <div class="space-y-4">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Export</h2>
                 <div class="flex items-center space-x-2"><input type="checkbox" id="check-export-bg" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-export-bg" class="text-sm font-medium select-none cursor-pointer">Mit Hintergrund</label></div>
@@ -190,16 +168,13 @@
         <div class="p-6 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">Items: <span id="stat-items">0</span></div>
     </aside>
 
-    <main id="main-area" class="w-4/5 flex items-center justify-center">
+    <main id="main-area" class="flex-1 flex items-center justify-center relative">
+        <button id="btn-toggle-menu" class="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
         <div id="drop-overlay">Bild hier ablegen</div>
         <div id="bg-layer"><img id="bg-image-element" src="" alt="Background"></div>
         <div id="grid-container"></div>
         <div id="ui-layer">
-            <svg id="grad-line-svg">
-                <line id="grad-line-visual" x1="0" y1="0" x2="0" y2="0" stroke="white" stroke-width="2" stroke-dasharray="4" />
-                <circle id="grad-start-point" cx="0" cy="0" r="4" fill="white" />
-                <circle id="grad-end-point" cx="0" cy="0" r="4" fill="white" />
-            </svg>
+            <svg id="grad-line-svg"><line id="grad-line-visual" x1="0" y1="0" x2="0" y2="0" stroke="white" stroke-width="2" stroke-dasharray="4" /><circle id="grad-start-point" cx="0" cy="0" r="4" fill="white" /><circle id="grad-end-point" cx="0" cy="0" r="4" fill="white" /></svg>
             <div id="brush-cursor"></div>
         </div>
     </main>
@@ -217,6 +192,7 @@
 
         const ui = {
             root: document.documentElement, mainArea: document.getElementById('main-area'), dropOverlay: document.getElementById('drop-overlay'), gridContainer: document.getElementById('grid-container'),
+            sidebar: document.getElementById('sidebar'), btnToggleMenu: document.getElementById('btn-toggle-menu'), btnCloseSidebar: document.getElementById('btn-close-sidebar'),
             checkAnimation: document.getElementById('check-animation'), animControls: document.getElementById('anim-controls'),
             inputAnimIntensity: document.getElementById('input-anim-intensity'), inputAnimRandom: document.getElementById('input-anim-random'), inputAnimSpeed: document.getElementById('input-anim-speed'),
             valAnimIntensity: document.getElementById('val-anim-intensity'), valAnimRandom: document.getElementById('val-anim-random'), valAnimSpeed: document.getElementById('val-anim-speed'),
@@ -245,23 +221,17 @@
 
             for (let i = 0; i < children.length; i++) {
                 const cell = children[i];
-                if (!cell.dataset.x) continue; // Safety check
-                const lx = parseInt(cell.dataset.x);
-                const ly = parseInt(cell.dataset.y);
+                if (!cell.dataset.x) continue;
+                const lx = parseInt(cell.dataset.x); const ly = parseInt(cell.dataset.y);
                 const key = `${lx},${ly}`;
 
-                let baseScale = 1.0;
-                let thMulti = 1.0;
-                
-                // Robuste Datenabfrage
+                let baseScale = 1.0; let thMulti = 1.0;
                 if (state.modifiedCells.has(key)) {
                     const data = state.modifiedCells.get(key);
-                    // Sicherstellen, dass Werte existieren (Fallbacks für alte Daten)
                     baseScale = (data && typeof data.scale !== 'undefined') ? data.scale : 1.0;
                     thMulti = (data && typeof data.thMulti !== 'undefined') ? data.thMulti : 1.0;
                 }
 
-                // Wave Logic
                 const w1 = Math.sin(lx * 0.15 + ly * 0.15 + t);
                 const w2 = Math.cos(lx * 0.08 - t * 0.5);
                 const w3 = Math.sin(ly * 0.3 + t * 1.5);
@@ -269,12 +239,13 @@
                 const noise = simpleHash(lx, ly) * 2 - 1; 
                 
                 let finalVal = waveVal * (1 - randomness * 0.8) + noise * (randomness * 0.8);
-                const delta = finalVal * intensity * 0.8; // Erhöht auf 0.8 für sichtbareren Effekt
+                const delta = finalVal * intensity * 8.0; 
                 
                 let animatedScale = baseScale * (1 + delta);
                 if (animatedScale < 0) animatedScale = 0;
 
-                cell.style.transform = `scale(${animatedScale.toFixed(3)})`;
+                // Fix: Wir setzen jetzt die Variable statt transform
+                cell.style.setProperty('--local-scale', animatedScale.toFixed(3));
                 cell.style.setProperty('--th-multi', thMulti);
             }
             requestAnimationFrame(animationLoop);
@@ -300,7 +271,6 @@
 
             ui.valSize.innerText = `${state.size}px`;
             ui.valThicknessPercent.innerText = `${state.thicknessPercent}%`;
-            // ui.valThicknessPx removed if element missing or handled gracefully, here assumed ok
             if(ui.valThicknessPx) ui.valThicknessPx.innerText = `(${Math.round(absoluteThickness)}px)`;
             ui.valSpacing.innerText = `${state.spacing}px`;
             ui.valBgOpacity.innerText = `${state.bgOpacity}%`;
@@ -315,16 +285,15 @@
             recalcGridGeometry();
         }
 
-        // Helper functions
         function resetCellVisual(cell) {
             const key = `${cell.dataset.x},${cell.dataset.y}`;
             let data = { scale: 1.0, thMulti: 1.0 };
             if (state.modifiedCells.has(key)) data = state.modifiedCells.get(key);
-            cell.style.transform = `scale(${data.scale})`;
-            cell.style.setProperty('--th-multi', data.thMulti);
+            updateCellVisual(cell, data);
         }
         function updateCellVisual(cell, data) {
-            cell.style.transform = `scale(${data.scale})`;
+            // Fix: Wir setzen jetzt die Variable statt transform
+            cell.style.setProperty('--local-scale', data.scale.toFixed(3));
             cell.style.setProperty('--th-multi', data.thMulti);
         }
         
@@ -372,8 +341,10 @@
 
         function recalcGridGeometry() {
             const activeGridSize = Math.max(state.spacing, state.size);
-            const cols = Math.ceil((window.innerWidth * 0.8) / activeGridSize) + ((Math.ceil((window.innerWidth * 0.8) / activeGridSize) % 2 === 0) ? 5 : 4);
-            const rows = Math.ceil(window.innerHeight / activeGridSize) + ((Math.ceil(window.innerHeight / activeGridSize) % 2 === 0) ? 5 : 4);
+            const w = ui.mainArea.clientWidth || window.innerWidth;
+            const h = ui.mainArea.clientHeight || window.innerHeight;
+            const cols = Math.ceil((w * 1.2) / activeGridSize) + ((Math.ceil((w * 1.2) / activeGridSize) % 2 === 0) ? 5 : 4);
+            const rows = Math.ceil((h * 1.2) / activeGridSize) + ((Math.ceil((h * 1.2) / activeGridSize) % 2 === 0) ? 5 : 4);
             ui.root.style.setProperty('--col-count', cols);
             const total = cols * rows; const safe = Math.min(total, 5000);
             ui.statItems.innerText = safe;
@@ -424,6 +395,14 @@
         ui.inputColor2.addEventListener('input', e => { state.bgColor2 = e.target.value; updateVisuals(); });
         ui.checkGradient.addEventListener('change', e => { state.hasGradient = e.target.checked; updateVisuals(); });
         
+        // Sidebar Toggles
+        function toggleSidebar() {
+            ui.sidebar.classList.toggle('collapsed');
+            setTimeout(recalcGridGeometry, 310);
+        }
+        ui.btnToggleMenu.addEventListener('click', toggleSidebar);
+        ui.btnCloseSidebar.addEventListener('click', toggleSidebar);
+
         ui.mainArea.addEventListener('pointermove', e => {
             const rect = ui.mainArea.getBoundingClientRect(); state.mouseX = e.clientX; state.mouseY = e.clientY;
             ui.root.style.setProperty('--brush-x', `${e.clientX - rect.left}px`); ui.root.style.setProperty('--brush-y', `${e.clientY - rect.top}px`);
