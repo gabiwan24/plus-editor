@@ -21,6 +21,7 @@
             --bg-scale: 1;
             --bg-opacity: 1;
             --bg-blend: normal;
+            --bg-filter: none; /* NEU für Monochrom */
             --brush-size: 100px;
             --brush-x: -9999px;
             --brush-y: -9999px;
@@ -30,8 +31,21 @@
         main { position: relative; background: var(--bg-color-1); overflow: hidden; }
         main.has-gradient { background: linear-gradient(var(--bg-grad-angle), var(--bg-color-1), var(--bg-color-2)); }
 
-        #bg-layer { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        #bg-image-element { display: none; transform: translate(var(--bg-x), var(--bg-y)) scale(var(--bg-scale)); transform-origin: center center; max-width: none; opacity: var(--bg-opacity); mix-blend-mode: var(--bg-blend); }
+        #bg-layer { 
+            position: absolute; inset: 0; 
+            display: flex; align-items: center; justify-content: center; 
+            pointer-events: none; 
+        }
+        
+        #bg-image-element { 
+            display: none; 
+            transform: translate(var(--bg-x), var(--bg-y)) scale(var(--bg-scale)); 
+            transform-origin: center center; 
+            max-width: none; 
+            opacity: var(--bg-opacity); 
+            mix-blend-mode: var(--bg-blend);
+            filter: var(--bg-filter); /* Filter anwenden */
+        }
 
         #grid-container {
             position: relative; z-index: 10; display: grid;
@@ -40,7 +54,6 @@
             gap: 0px;
             justify-content: center; align-content: center; justify-items: center; align-items: center;
             width: auto; height: auto; pointer-events: none; 
-            /* will-change: transform entfernt, da wir jetzt Layout-Properties ändern */
         }
 
         #ui-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
@@ -53,32 +66,17 @@
         #grad-line-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
         #drop-overlay { display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.5); border: 4px dashed #fff; z-index: 60; align-items: center; justify-content: center; font-size: 2rem; color: #fff; font-weight: bold; pointer-events: none; }
 
-        /* WICHTIGE ÄNDERUNG FÜR SCHÄRFE */
         .plus-shape {
             position: relative; display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
-            
-            /* Default Werte */
-            --local-scale: 1;
-            --th-multi: 1;
-            
-            /* Berechnung der tatsächlichen Größe basierend auf Scale */
-            /* Dadurch rendert der Browser die Box in voller Auflösung neu */
+            --local-scale: 1; --th-multi: 1;
             width: calc(var(--size) * var(--local-scale));
             height: calc(var(--size) * var(--local-scale));
         }
         
         .bar-h, .bar-v { position: absolute; background-color: var(--plus-color); }
-        
-        /* Dicke skaliert jetzt auch mathematisch mit */
-        .bar-h { 
-            width: 100%; 
-            height: calc(var(--thickness) * var(--th-multi) * var(--local-scale)); 
-        }
-        .bar-v { 
-            height: 100%; 
-            width: calc(var(--thickness) * var(--th-multi) * var(--local-scale)); 
-        }
+        .bar-h { width: 100%; height: calc(var(--thickness) * var(--th-multi) * var(--local-scale)); }
+        .bar-v { height: 100%; width: calc(var(--thickness) * var(--th-multi) * var(--local-scale)); }
         
         .text-alert { color: #dc2626; font-weight: 700; }
         main.is-editing-bg { cursor: move; cursor: grab; } main.is-editing-bg:active { cursor: grabbing; }
@@ -86,90 +84,185 @@
         .disabled-control { opacity: 0.4; pointer-events: none; filter: grayscale(1); }
         .tool-btn.active { background-color: #2563EB; color: white; border-color: #2563EB; }
 
-        /* Sidebar Transition */
         #sidebar { transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; will-change: width, transform; }
         #sidebar.collapsed { width: 0 !important; min-width: 0 !important; transform: translateX(-100%); overflow: hidden; border: none; }
         @media (min-aspect-ratio: 1/1) { #sidebar { width: 10%; min-width: 200px; } }
         
-        #btn-toggle-menu { position: absolute; top: 10px; left: 10px; z-index: 50; background: white; padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; transition: left 0.3s ease; }
+        #btn-toggle-menu { position: absolute; top: 10px; left: 10px; z-index: 70; background: white; padding: 6px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; transition: left 0.3s ease; }
         #sidebar.collapsed + main #btn-toggle-menu svg { transform: rotate(180deg); }
+
+        #sidebar-content::-webkit-scrollbar { width: 4px; }
+        #sidebar-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        #sidebar-content::-webkit-scrollbar-track { background: transparent; }
     </style>
 </head>
-<body class="flex w-screen h-screen bg-gray-50 font-sans text-gray-800">
+<body class="flex w-screen h-screen bg-gray-50 font-sans text-gray-800 text-xs">
 
-    <aside id="sidebar" class="w-1/5 min-w-[280px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl relative">
-        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-            <div><h1 class="text-xl font-bold text-gray-900 leading-tight">Configurator</h1><p class="text-xs text-gray-500 mt-1">Zentrales Raster (v13 Sharp)</p></div>
-            <button id="btn-close-sidebar" class="text-gray-400 hover:text-gray-700"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+    <aside id="sidebar" class="w-1/5 min-w-[240px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl relative h-full">
+        <!-- Header -->
+        <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
+            <div><h1 class="text-sm font-bold text-gray-900 leading-tight">Configurator</h1><p class="text-[10px] text-gray-400">v15 Mono</p></div>
+            <button id="btn-close-sidebar" class="text-gray-400 hover:text-gray-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
         </div>
 
-        <div class="flex-1 p-6 space-y-8 overflow-y-auto">
-            <div class="space-y-6" id="raster-config-group">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Basis Raster</h2>
-                <div class="space-y-2"><div class="flex justify-between items-end"><label id="label-size" class="text-sm font-medium">Größe</label><span id="val-size" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">30px</span></div><input type="range" id="input-size" min="10" max="300" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"></div>
-                <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Dicke (%)</label><div class="flex items-center gap-2"><span id="val-thickness-px" class="text-[10px] text-gray-400">(3px)</span><span id="val-thickness-percent" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">10%</span></div></div><input type="range" id="input-thickness" min="1" max="100" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"></div>
-                <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Rastermaß</label><span id="val-spacing" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100px</span></div><input type="range" id="input-spacing" min="20" max="250" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"></div>
-            </div>
-            <hr class="border-gray-100">
-            <div class="space-y-4">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Animation</h2>
-                <div class="flex items-center space-x-2"><input type="checkbox" id="check-animation" class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"><label for="check-animation" class="text-sm font-medium select-none cursor-pointer">Animation aktivieren</label></div>
-                <div id="anim-controls" class="space-y-4 hidden pl-2 border-l-2 border-orange-100">
-                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Intensität</label><span id="val-anim-intensity" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">50%</span></div><input type="range" id="input-anim-intensity" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"></div>
-                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Zufall</label><span id="val-anim-random" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">20%</span></div><input type="range" id="input-anim-random" min="0" max="100" value="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"></div>
-                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-xs font-medium text-gray-600">Tempo</label><span id="val-anim-speed" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">1.5x</span></div><input type="range" id="input-anim-speed" min="1" max="50" value="15" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"></div>
+        <div id="sidebar-content" class="flex-1 px-4 py-2 overflow-y-auto space-y-3">
+            
+            <!-- Basis Raster -->
+            <div class="space-y-2">
+                <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Basis Raster</h2>
+                <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                    <label class="text-[10px] font-medium text-gray-600">Größe</label>
+                    <input type="range" id="input-size" min="10" max="300" value="30" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+                <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                    <label class="text-[10px] font-medium text-gray-600">Dicke</label>
+                    <input type="range" id="input-thickness" min="1" max="100" value="10" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+                <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                    <label class="text-[10px] font-medium text-gray-600">Raster</label>
+                    <input type="range" id="input-spacing" min="20" max="250" value="100" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600">
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-400 font-mono pt-1">
+                    <span id="val-size">30px</span>
+                    <span id="val-thickness-percent">10%</span>
+                    <span id="val-spacing">100px</span>
                 </div>
             </div>
-            <hr class="border-gray-100">
-            <div class="space-y-4">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Hintergrund Farbe</h2>
-                <div class="flex items-center justify-between"><label class="text-sm font-medium">Farbe 1</label><input type="color" id="input-color-1" value="#1500FF" class="w-8 h-8 rounded border-0 cursor-pointer p-0 bg-transparent"></div>
-                <div class="flex items-center space-x-2 pt-2"><input type="checkbox" id="check-gradient" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"><label for="check-gradient" class="text-sm font-medium select-none cursor-pointer">Verlauf aktivieren</label></div>
-                <div id="gradient-options" class="space-y-4 hidden">
-                    <div class="flex items-center justify-between"><label class="text-sm font-medium">Farbe 2</label><input type="color" id="input-color-2" value="#000000" class="w-8 h-8 rounded border-0 cursor-pointer p-0 bg-transparent"></div>
-                    <div class="flex items-center space-x-2"><input type="checkbox" id="check-grad-edit" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"><label for="check-grad-edit" class="text-sm font-medium select-none cursor-pointer">Verlauf bearbeiten</label></div>
-                </div>
-            </div>
-            <hr class="border-gray-100">
-            <div class="space-y-4">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Hintergrundbild (Drag & Drop)</h2>
-                <div class="flex items-center space-x-2"><input type="checkbox" id="check-bg-edit" disabled class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50"><label id="label-bg-edit" for="check-bg-edit" class="text-sm font-medium select-none cursor-pointer opacity-50">Bild bearbeiten</label></div>
-                <div id="bg-controls" class="space-y-4 opacity-50 pointer-events-none transition-opacity">
-                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Bild Zoom</label><span id="val-bg-scale" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">1.0x</span></div><input type="range" id="input-bg-scale" min="0.1" max="5" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"></div>
-                    <div class="flex items-center space-x-2"><input type="checkbox" id="check-bg-multiply" class="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500"><label for="check-bg-multiply" class="text-sm font-medium select-none cursor-pointer">Multiplizieren</label></div>
-                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Transparenz Bild</label><span id="val-bg-opacity" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100%</span></div><input type="range" id="input-bg-opacity" min="0" max="100" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-600"></div>
-                </div>
-            </div>
-            <hr class="border-gray-100">
-            <div class="space-y-4">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Raster-Editiermodus</h2>
-                <div class="flex items-center space-x-2"><input type="checkbox" id="check-edit-mode" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-edit-mode" class="text-sm font-medium select-none cursor-pointer">Mal-Modus aktivieren</label></div>
-                <div id="edit-mode-controls" class="space-y-4 hidden">
-                    <div class="flex space-x-4 p-2 bg-gray-100 rounded">
-                        <div class="flex items-center space-x-2"><input type="checkbox" id="check-paint-scale" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-paint-scale" class="text-xs font-medium select-none cursor-pointer">Skalieren</label></div>
-                        <div class="flex items-center space-x-2"><input type="checkbox" id="check-paint-thickness" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-paint-thickness" class="text-xs font-medium select-none cursor-pointer">Dicke</label></div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- Animation -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="check-animation" class="w-3 h-3 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
+                        <label for="check-animation" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider cursor-pointer">Animation</label>
                     </div>
-                    <div class="space-y-2"><div class="flex justify-between items-center"><label class="text-sm font-medium">Pinselgröße</label><span id="val-brush-size" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">100px</span></div><input type="range" id="input-brush-size" min="20" max="500" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"></div>
-                    <div class="flex justify-between gap-2">
-                        <button id="btn-tool-plus" class="tool-btn active flex-1 py-2 border-2 border-gray-200 rounded font-bold hover:bg-gray-100 transition-colors">+</button>
-                        <button id="btn-tool-minus" class="tool-btn flex-1 py-2 border-2 border-gray-200 rounded font-bold hover:bg-gray-100 transition-colors">-</button>
-                        <button id="btn-tool-delete" class="tool-btn flex-1 py-2 border-2 border-gray-200 rounded font-bold hover:bg-gray-100 transition-colors text-red-500">X</button>
+                </div>
+                
+                <div id="anim-controls" class="space-y-1.5 hidden pl-2 border-l-2 border-orange-100">
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Intensität</label>
+                        <input type="range" id="input-anim-intensity" min="0" max="100" value="50" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
                     </div>
-                    <div class="flex items-center space-x-2 pt-1"><input type="checkbox" id="check-influence" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-influence" class="text-sm font-medium select-none cursor-pointer">Einfluss (Weiche Kante)</label></div>
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Zufall</label>
+                        <input type="range" id="input-anim-random" min="0" max="100" value="20" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Tempo</label>
+                        <input type="range" id="input-anim-speed" min="1" max="50" value="15" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                    </div>
                 </div>
             </div>
-            <hr class="border-gray-100">
-            <div class="space-y-4">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Export</h2>
-                <div class="flex items-center space-x-2"><input type="checkbox" id="check-export-bg" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"><label for="check-export-bg" class="text-sm font-medium select-none cursor-pointer">Mit Hintergrund</label></div>
-                <button id="btn-export" class="w-full py-2 px-4 bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">SVG Speichern</button>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- Hintergrund Farbe -->
+            <div class="space-y-2">
+                <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Farbe & Verlauf</h2>
+                <div class="flex items-center gap-2">
+                    <input type="color" id="input-color-1" value="#1500FF" class="w-6 h-6 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
+                    <div id="color-2-container" class="hidden flex items-center gap-2">
+                        <span class="text-gray-300">→</span>
+                        <input type="color" id="input-color-2" value="#000000" class="w-6 h-6 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
+                    </div>
+                    <div class="flex-1"></div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="check-gradient" class="w-3 h-3 text-purple-600 rounded border-gray-300">
+                        <label for="check-gradient" class="text-[10px] text-gray-500 cursor-pointer">Verlauf</label>
+                    </div>
+                </div>
+                <div id="gradient-edit-container" class="hidden flex justify-end">
+                    <div class="flex items-center space-x-1">
+                        <input type="checkbox" id="check-grad-edit" class="w-3 h-3 text-purple-600 rounded border-gray-300">
+                        <label for="check-grad-edit" class="text-[10px] text-gray-500 cursor-pointer">Richtung ändern</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- Hintergrund Bild -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bild (Drag&Drop)</h2>
+                    <div class="flex items-center space-x-1">
+                        <input type="checkbox" id="check-bg-edit" disabled class="w-3 h-3 text-blue-600 rounded border-gray-300 disabled:opacity-50">
+                        <!-- Renamed "Move" to "Edit" -->
+                        <label id="label-bg-edit" for="check-bg-edit" class="text-[10px] text-gray-500 cursor-pointer opacity-50">Edit</label>
+                    </div>
+                </div>
+                
+                <div id="bg-controls" class="space-y-1.5 opacity-50 pointer-events-none transition-opacity">
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Zoom</label>
+                        <input type="range" id="input-bg-scale" min="0.1" max="5" step="0.1" value="1" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Opazität</label>
+                        <input type="range" id="input-bg-opacity" min="0" max="100" value="100" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-600">
+                    </div>
+                    <!-- Layout Update für Monochrom und Multiplizieren -->
+                    <div class="flex items-center justify-between pt-1">
+                        <div class="flex items-center space-x-1">
+                            <input type="checkbox" id="check-bg-mono" class="w-3 h-3 text-gray-600 rounded border-gray-300 focus:ring-gray-500">
+                            <label for="check-bg-mono" class="text-[10px] text-gray-500 cursor-pointer">Monochrom</label>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <input type="checkbox" id="check-bg-multiply" class="w-3 h-3 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
+                            <label for="check-bg-multiply" class="text-[10px] text-gray-500 cursor-pointer">Multiplizieren</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- Raster Editiermodus -->
+            <div class="space-y-2">
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="check-edit-mode" class="w-3 h-3 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="check-edit-mode" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider cursor-pointer">Mal-Modus</label>
+                </div>
+                
+                <div id="edit-mode-controls" class="space-y-2 hidden">
+                    <div class="flex space-x-3 p-1.5 bg-gray-50 rounded border border-gray-100">
+                        <div class="flex items-center space-x-1"><input type="checkbox" id="check-paint-scale" checked class="w-3 h-3 text-blue-600 rounded"><label for="check-paint-scale" class="text-[10px] cursor-pointer">Size</label></div>
+                        <div class="flex items-center space-x-1"><input type="checkbox" id="check-paint-thickness" class="w-3 h-3 text-blue-600 rounded"><label for="check-paint-thickness" class="text-[10px] cursor-pointer">Thick</label></div>
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Pinsel</label>
+                        <input type="range" id="input-brush-size" min="20" max="500" value="100" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    </div>
+                    <div class="flex gap-1">
+                        <button id="btn-tool-plus" class="tool-btn active flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors">+</button>
+                        <button id="btn-tool-minus" class="tool-btn flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors">-</button>
+                        <button id="btn-tool-delete" class="tool-btn flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors text-red-500">X</button>
+                    </div>
+                    <div class="flex items-center space-x-1 justify-end">
+                        <input type="checkbox" id="check-influence" class="w-3 h-3 text-blue-600 rounded border-gray-300">
+                        <label for="check-influence" class="text-[10px] text-gray-500 cursor-pointer">Soft</label>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="p-6 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">Items: <span id="stat-items">0</span></div>
+
+        <!-- Footer / Export fixed bottom -->
+        <div class="p-3 border-t border-gray-200 bg-gray-50 shrink-0 space-y-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-1">
+                    <input type="checkbox" id="check-export-bg" checked class="w-3 h-3 text-blue-600 rounded border-gray-300">
+                    <label for="check-export-bg" class="text-[10px] text-gray-500 cursor-pointer">Mit BG</label>
+                </div>
+                <span class="text-[9px] text-gray-400" id="stat-items">0 Items</span>
+            </div>
+            <button id="btn-export" class="w-full py-1.5 px-4 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded shadow transition-colors">SVG Export</button>
+        </div>
     </aside>
 
     <main id="main-area" class="flex-1 flex items-center justify-center relative">
-        <button id="btn-toggle-menu" class="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+        <button id="btn-toggle-menu" class="bg-white p-1.5 rounded shadow-sm hover:bg-gray-50 text-gray-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
         <div id="drop-overlay">Bild hier ablegen</div>
         <div id="bg-layer"><img id="bg-image-element" src="" alt="Background"></div>
         <div id="grid-container"></div>
@@ -186,7 +279,7 @@
             isPaintMode: false, brushSize: 100, activeTool: 'plus', useInfluence: false,
             modifiedCells: new Map(), isPainting: false, paintTargetScale: true, paintTargetThickness: false,
             bgColor1: '#1500FF', bgColor2: '#000000', hasGradient: false, gradientAngle: 225, 
-            bgImageSrc: null, bgX: 0, bgY: 0, bgScale: 1, bgMultiply: false, bgOpacity: 100,
+            bgImageSrc: null, bgX: 0, bgY: 0, bgScale: 1, bgMultiply: false, bgOpacity: 100, bgMono: false, // NEU: bgMono
             isEditingBg: false, isEditingGrad: false, isDragging: false, startX: 0, startY: 0, lastMouseX: 0, lastMouseY: 0, mouseX: 0, mouseY: 0 
         };
 
@@ -195,19 +288,20 @@
             sidebar: document.getElementById('sidebar'), btnToggleMenu: document.getElementById('btn-toggle-menu'), btnCloseSidebar: document.getElementById('btn-close-sidebar'),
             checkAnimation: document.getElementById('check-animation'), animControls: document.getElementById('anim-controls'),
             inputAnimIntensity: document.getElementById('input-anim-intensity'), inputAnimRandom: document.getElementById('input-anim-random'), inputAnimSpeed: document.getElementById('input-anim-speed'),
-            valAnimIntensity: document.getElementById('val-anim-intensity'), valAnimRandom: document.getElementById('val-anim-random'), valAnimSpeed: document.getElementById('val-anim-speed'),
             checkEditMode: document.getElementById('check-edit-mode'), editModeControls: document.getElementById('edit-mode-controls'),
             checkPaintScale: document.getElementById('check-paint-scale'), checkPaintThickness: document.getElementById('check-paint-thickness'),
-            inputBrushSize: document.getElementById('input-brush-size'), valBrushSize: document.getElementById('val-brush-size'),
+            inputBrushSize: document.getElementById('input-brush-size'),
             btnToolPlus: document.getElementById('btn-tool-plus'), btnToolMinus: document.getElementById('btn-tool-minus'), btnToolDelete: document.getElementById('btn-tool-delete'),
             checkInfluence: document.getElementById('check-influence'), brushCursor: document.getElementById('brush-cursor'),
             inputSize: document.getElementById('input-size'), inputThickness: document.getElementById('input-thickness'), inputSpacing: document.getElementById('input-spacing'),
-            inputColor1: document.getElementById('input-color-1'), inputColor2: document.getElementById('input-color-2'), checkGradient: document.getElementById('check-gradient'), gradientOptions: document.getElementById('gradient-options'), checkGradEdit: document.getElementById('check-grad-edit'),
+            inputColor1: document.getElementById('input-color-1'), inputColor2: document.getElementById('input-color-2'), 
+            color2Container: document.getElementById('color-2-container'), gradientEditContainer: document.getElementById('gradient-edit-container'),
+            checkGradient: document.getElementById('check-gradient'), checkGradEdit: document.getElementById('check-grad-edit'),
             gradLineSvg: document.getElementById('grad-line-svg'), gradLineVisual: document.getElementById('grad-line-visual'), gradStartPoint: document.getElementById('grad-start-point'), gradEndPoint: document.getElementById('grad-end-point'),
             checkBgEdit: document.getElementById('check-bg-edit'), labelBgEdit: document.getElementById('label-bg-edit'), bgControls: document.getElementById('bg-controls'),
-            inputBgScale: document.getElementById('input-bg-scale'), valBgScale: document.getElementById('val-bg-scale'), checkBgMultiply: document.getElementById('check-bg-multiply'), inputBgOpacity: document.getElementById('input-bg-opacity'), valBgOpacity: document.getElementById('val-bg-opacity'), bgImageElement: document.getElementById('bg-image-element'),
+            inputBgScale: document.getElementById('input-bg-scale'), checkBgMultiply: document.getElementById('check-bg-multiply'), checkBgMono: document.getElementById('check-bg-mono'), inputBgOpacity: document.getElementById('input-bg-opacity'), bgImageElement: document.getElementById('bg-image-element'),
             checkExportBg: document.getElementById('check-export-bg'), btnExport: document.getElementById('btn-export'),
-            labelSize: document.getElementById('label-size'), valSize: document.getElementById('val-size'), valThicknessPercent: document.getElementById('val-thickness-percent'), valThicknessPx: document.getElementById('val-thickness-px'), valSpacing: document.getElementById('val-spacing'), statItems: document.getElementById('stat-items'),
+            valSize: document.getElementById('val-size'), valThicknessPercent: document.getElementById('val-thickness-percent'), valSpacing: document.getElementById('val-spacing'), statItems: document.getElementById('stat-items'),
         };
 
         function simpleHash(x, y) { return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123 - Math.floor(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123); }
@@ -221,7 +315,7 @@
 
             for (let i = 0; i < children.length; i++) {
                 const cell = children[i];
-                if (!cell.dataset.x) continue;
+                if (!cell.dataset.x) continue; 
                 const lx = parseInt(cell.dataset.x); const ly = parseInt(cell.dataset.y);
                 const key = `${lx},${ly}`;
 
@@ -244,7 +338,6 @@
                 let animatedScale = baseScale * (1 + delta);
                 if (animatedScale < 0) animatedScale = 0;
 
-                // Fix: Wir setzen jetzt die Variable statt transform
                 cell.style.setProperty('--local-scale', animatedScale.toFixed(3));
                 cell.style.setProperty('--th-multi', thMulti);
             }
@@ -254,7 +347,6 @@
         function updateVisuals() {
             const absoluteThickness = (state.size * state.thicknessPercent) / 100;
             const activeGridSize = Math.max(state.spacing, state.size);
-            const isGridExpanded = state.size > state.spacing;
 
             ui.root.style.setProperty('--size', `${state.size}px`);
             ui.root.style.setProperty('--thickness', `${absoluteThickness}px`);
@@ -264,19 +356,22 @@
             ui.root.style.setProperty('--bg-grad-angle', `${state.gradientAngle}deg`);
             ui.root.style.setProperty('--bg-blend', state.bgMultiply ? 'multiply' : 'normal');
             ui.root.style.setProperty('--bg-opacity', state.bgOpacity / 100);
+            ui.root.style.setProperty('--bg-filter', state.bgMono ? 'grayscale(100%)' : 'none'); // NEU
             ui.root.style.setProperty('--brush-size', `${state.brushSize}px`);
 
-            if (state.hasGradient) { ui.mainArea.classList.add('has-gradient'); ui.gradientOptions.classList.remove('hidden'); } 
-            else { ui.mainArea.classList.remove('has-gradient'); ui.gradientOptions.classList.add('hidden'); }
+            if (state.hasGradient) { 
+                ui.mainArea.classList.add('has-gradient'); 
+                ui.color2Container.classList.remove('hidden');
+                ui.gradientEditContainer.classList.remove('hidden');
+            } else { 
+                ui.mainArea.classList.remove('has-gradient'); 
+                ui.color2Container.classList.add('hidden');
+                ui.gradientEditContainer.classList.add('hidden');
+            }
 
             ui.valSize.innerText = `${state.size}px`;
             ui.valThicknessPercent.innerText = `${state.thicknessPercent}%`;
-            if(ui.valThicknessPx) ui.valThicknessPx.innerText = `(${Math.round(absoluteThickness)}px)`;
             ui.valSpacing.innerText = `${state.spacing}px`;
-            ui.valBgOpacity.innerText = `${state.bgOpacity}%`;
-
-            if (isGridExpanded && ui.labelSize) ui.labelSize.classList.add('text-alert'); 
-            else if (ui.labelSize) ui.labelSize.classList.remove('text-alert');
 
             if (!state.animation.active) {
                 const children = ui.gridContainer.children;
@@ -292,7 +387,6 @@
             updateCellVisual(cell, data);
         }
         function updateCellVisual(cell, data) {
-            // Fix: Wir setzen jetzt die Variable statt transform
             cell.style.setProperty('--local-scale', data.scale.toFixed(3));
             cell.style.setProperty('--th-multi', data.thMulti);
         }
@@ -347,7 +441,7 @@
             const rows = Math.ceil((h * 1.2) / activeGridSize) + ((Math.ceil((h * 1.2) / activeGridSize) % 2 === 0) ? 5 : 4);
             ui.root.style.setProperty('--col-count', cols);
             const total = cols * rows; const safe = Math.min(total, 5000);
-            ui.statItems.innerText = safe;
+            ui.statItems.innerText = safe + " Items";
             if (ui.gridContainer.childElementCount !== safe || ui.gridContainer.dataset.cols != cols) {
                 renderGridItems(safe, cols, rows);
                 ui.gridContainer.dataset.cols = cols;
@@ -373,16 +467,55 @@
             ui.gridContainer.appendChild(frag);
         }
 
+        // --- Interaction Helper ---
+        function updateBgTransform() {
+            ui.root.style.setProperty('--bg-x', `${state.bgX}px`);
+            ui.root.style.setProperty('--bg-y', `${state.bgY}px`);
+            ui.root.style.setProperty('--bg-scale', state.bgScale);
+        }
+
+        function updateInteractionStates() {
+            if (state.isEditingGrad) {
+                ui.mainArea.classList.add('is-editing-grad');
+                ui.mainArea.classList.remove('is-editing-bg');
+                ui.checkBgEdit.disabled = true;
+                if(ui.labelBgEdit) ui.labelBgEdit.classList.add('opacity-50');
+            } else {
+                ui.mainArea.classList.remove('is-editing-grad');
+                if (state.bgImageSrc && !state.isPaintMode) { 
+                    ui.checkBgEdit.disabled = false;
+                    if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50');
+                    if (ui.checkBgEdit.checked) {
+                        ui.mainArea.classList.add('is-editing-bg');
+                        ui.bgControls.classList.remove('opacity-50', 'pointer-events-none');
+                        state.isEditingBg = true;
+                    }
+                }
+            }
+            if (!state.isEditingGrad && state.isEditingBg && !state.isPaintMode) {
+                ui.mainArea.classList.add('is-editing-bg');
+            } else if (!state.isEditingGrad) {
+                 ui.mainArea.classList.remove('is-editing-bg');
+            }
+        }
+        function deactivateGradientMode() {
+            if (state.isEditingGrad) {
+                state.isEditingGrad = false;
+                ui.checkGradEdit.checked = false;
+                updateInteractionStates();
+            }
+        }
+
         // Listeners
         ui.checkAnimation.addEventListener('change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
-        ui.inputAnimIntensity.addEventListener('input', e => { state.animation.intensity = parseInt(e.target.value)/100; ui.valAnimIntensity.innerText = e.target.value+'%'; });
-        ui.inputAnimRandom.addEventListener('input', e => { state.animation.randomness = parseInt(e.target.value)/100; ui.valAnimRandom.innerText = e.target.value+'%'; });
-        ui.inputAnimSpeed.addEventListener('input', e => { state.animation.speed = parseInt(e.target.value)/10; ui.valAnimSpeed.innerText = state.animation.speed+'x'; });
+        ui.inputAnimIntensity.addEventListener('input', e => { state.animation.intensity = parseInt(e.target.value)/100; });
+        ui.inputAnimRandom.addEventListener('input', e => { state.animation.randomness = parseInt(e.target.value)/100; });
+        ui.inputAnimSpeed.addEventListener('input', e => { state.animation.speed = parseInt(e.target.value)/10; });
         
         ui.checkEditMode.addEventListener('change', e => { state.isPaintMode = e.target.checked; if(e.target.checked) { ui.editModeControls.classList.remove('hidden'); ui.mainArea.classList.add('is-painting'); ui.brushCursor.style.display='block'; ui.checkBgEdit.checked=false; ui.checkGradEdit.checked=false; state.isEditingBg=false; state.isEditingGrad=false; } else { ui.editModeControls.classList.add('hidden'); ui.mainArea.classList.remove('is-painting'); ui.brushCursor.style.display='none'; } });
         ui.checkPaintScale.addEventListener('change', e => state.paintTargetScale = e.target.checked);
         ui.checkPaintThickness.addEventListener('change', e => state.paintTargetThickness = e.target.checked);
-        ui.inputBrushSize.addEventListener('input', e => { state.brushSize = parseInt(e.target.value); ui.valBrushSize.innerText = state.brushSize+'px'; updateVisuals(); });
+        ui.inputBrushSize.addEventListener('input', e => { state.brushSize = parseInt(e.target.value); updateVisuals(); });
         ui.checkInfluence.addEventListener('change', e => state.useInfluence = e.target.checked);
         
         ui.btnToolPlus.addEventListener('click', () => setTool('plus')); ui.btnToolMinus.addEventListener('click', () => setTool('minus')); ui.btnToolDelete.addEventListener('click', () => setTool('delete'));
@@ -391,8 +524,8 @@
         ui.inputSize.addEventListener('input', e => { state.size = parseInt(e.target.value); updateVisuals(); });
         ui.inputThickness.addEventListener('input', e => { state.thicknessPercent = parseInt(e.target.value); updateVisuals(); });
         ui.inputSpacing.addEventListener('input', e => { state.spacing = parseInt(e.target.value); updateVisuals(); });
-        ui.inputColor1.addEventListener('input', e => { state.bgColor1 = e.target.value; updateVisuals(); });
-        ui.inputColor2.addEventListener('input', e => { state.bgColor2 = e.target.value; updateVisuals(); });
+        ui.inputColor1.addEventListener('input', e => { state.bgColor1 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        ui.inputColor2.addEventListener('input', e => { state.bgColor2 = e.target.value; deactivateGradientMode(); updateVisuals(); });
         ui.checkGradient.addEventListener('change', e => { state.hasGradient = e.target.checked; updateVisuals(); });
         
         // Sidebar Toggles
@@ -403,13 +536,110 @@
         ui.btnToggleMenu.addEventListener('click', toggleSidebar);
         ui.btnCloseSidebar.addEventListener('click', toggleSidebar);
 
+        ui.inputBgScale.addEventListener('input', e => { state.bgScale = parseFloat(e.target.value); updateBgTransform(); });
+        ui.checkBgMultiply.addEventListener('change', e => { state.bgMultiply = e.target.checked; updateVisuals(); });
+        ui.checkBgMono.addEventListener('change', e => { state.bgMono = e.target.checked; updateVisuals(); }); // NEU Listener
+        ui.inputBgOpacity.addEventListener('input', e => { state.bgOpacity = parseInt(e.target.value); updateVisuals(); });
+        ui.checkGradEdit.addEventListener('change', e => { state.isEditingGrad = e.target.checked; updateInteractionStates(); });
+        ui.checkBgEdit.addEventListener('change', e => { 
+            state.isEditingBg = e.target.checked; 
+            if (e.target.checked) ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); 
+            else ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); 
+            updateInteractionStates(); 
+        });
+
         ui.mainArea.addEventListener('pointermove', e => {
             const rect = ui.mainArea.getBoundingClientRect(); state.mouseX = e.clientX; state.mouseY = e.clientY;
             ui.root.style.setProperty('--brush-x', `${e.clientX - rect.left}px`); ui.root.style.setProperty('--brush-y', `${e.clientY - rect.top}px`);
+            
+            if (!state.isPaintMode && state.isDragging) {
+                if (state.isEditingGrad) {
+                    const dx = e.clientX - state.startX;
+                    const dy = e.clientY - state.startY;
+                    const currentRelX = e.clientX - rect.left;
+                    const currentRelY = e.clientY - rect.top;
+                    ui.gradLineVisual.setAttribute('x2', currentRelX);
+                    ui.gradLineVisual.setAttribute('y2', currentRelY);
+                    ui.gradEndPoint.setAttribute('cx', currentRelX);
+                    ui.gradEndPoint.setAttribute('cy', currentRelY);
+                    const rad = Math.atan2(dy, dx);
+                    let deg = rad * (180 / Math.PI) + 90; 
+                    state.gradientAngle = Math.round(deg);
+                    updateVisuals();
+                } else if (state.isEditingBg && state.bgImageSrc) {
+                    const dx = e.clientX - state.lastMouseX;
+                    const dy = e.clientY - state.lastMouseY;
+                    state.bgX += dx;
+                    state.bgY += dy;
+                    state.lastMouseX = e.clientX;
+                    state.lastMouseY = e.clientY;
+                    updateBgTransform();
+                }
+            }
         });
-        ui.mainArea.addEventListener('pointerdown', e => { if(state.isPaintMode) { state.isPainting=true; updatePaintLoop(); applyBrush(e.clientX, e.clientY); } });
-        window.addEventListener('pointerup', () => { state.isPainting=false; });
+        ui.mainArea.addEventListener('pointerdown', e => { 
+            if(state.isPaintMode) { 
+                state.isPainting=true; updatePaintLoop(); applyBrush(e.clientX, e.clientY); 
+            } else {
+                state.isDragging = true;
+                state.startX = e.clientX;
+                state.startY = e.clientY;
+                if (state.isEditingGrad) {
+                    const rect = ui.mainArea.getBoundingClientRect();
+                    const relX = e.clientX - rect.left;
+                    const relY = e.clientY - rect.top;
+                    ui.gradLineSvg.style.display = 'block';
+                    ui.gradLineVisual.setAttribute('x1', relX); ui.gradLineVisual.setAttribute('y1', relY);
+                    ui.gradLineVisual.setAttribute('x2', relX); ui.gradLineVisual.setAttribute('y2', relY);
+                    ui.gradStartPoint.setAttribute('cx', relX); ui.gradStartPoint.setAttribute('cy', relY);
+                    ui.gradEndPoint.setAttribute('cx', relX); ui.gradEndPoint.setAttribute('cy', relY);
+                } else if (state.isEditingBg) {
+                    state.lastMouseX = e.clientX;
+                    state.lastMouseY = e.clientY;
+                }
+            }
+        });
+        window.addEventListener('pointerup', () => { 
+            state.isDragging = false; 
+            state.isPainting = false; 
+            if (state.isEditingGrad) ui.gradLineSvg.style.display = 'none';
+        });
         window.addEventListener('resize', () => recalcGridGeometry());
+
+        // -- DRAG & DROP --
+        let dragCounter = 0;
+        function handleDragEnter(e) { e.preventDefault(); e.stopPropagation(); dragCounter++; if (dragCounter > 0) ui.dropOverlay.style.display = 'flex'; }
+        function handleDragLeave(e) { e.preventDefault(); e.stopPropagation(); dragCounter--; if (dragCounter <= 0) { ui.dropOverlay.style.display = 'none'; dragCounter = 0; } }
+        function handleDragOver(e) { e.preventDefault(); e.stopPropagation(); }
+        function handleDrop(e) {
+            e.preventDefault(); e.stopPropagation(); dragCounter = 0; ui.dropOverlay.style.display = 'none';
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.bgImageSrc = evt.target.result;
+                        ui.bgImageElement.src = state.bgImageSrc;
+                        ui.bgImageElement.style.display = 'block';
+                        const scaleW = ui.mainArea.clientWidth / img.width;
+                        const scaleH = ui.mainArea.clientHeight / img.height;
+                        const initialScale = Math.max(scaleW, scaleH);
+                        state.bgScale = initialScale; state.bgX = 0; state.bgY = 0;
+                        ui.inputBgScale.value = initialScale;
+                        updateBgTransform();
+                        ui.checkBgEdit.disabled = false;
+                        if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50');
+                    };
+                    img.src = evt.target.result;
+                };
+                reader.readAsDataURL(files[0]);
+            }
+        }
+        window.addEventListener('dragenter', handleDragEnter);
+        window.addEventListener('dragleave', handleDragLeave);
+        window.addEventListener('dragover', handleDragOver);
+        window.addEventListener('drop', handleDrop);
 
         ui.btnExport.addEventListener('click', () => {
             const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight;
@@ -420,7 +650,12 @@
                 else { svg += `<rect width="100%" height="100%" fill="${state.bgColor1}"/>`; }
                 if (state.bgImageSrc) {
                     const nw = ui.bgImageElement.naturalWidth; const nh = ui.bgImageElement.naturalHeight;
-                    svg += `<g transform="translate(${w/2 + state.bgX}, ${h/2 + state.bgY}) scale(${state.bgScale})" style="${state.bgMultiply ? 'mix-blend-mode: multiply;' : ''}" opacity="${state.bgOpacity/100}"><image href="${state.bgImageSrc}" x="${-nw/2}" y="${-nh/2}" width="${nw}" height="${nh}"/></g>`;
+                    // SVG Style construction
+                    let styleStr = "";
+                    if (state.bgMultiply) styleStr += "mix-blend-mode: multiply; ";
+                    if (state.bgMono) styleStr += "filter: grayscale(100%); ";
+                    
+                    svg += `<g transform="translate(${w/2 + state.bgX}, ${h/2 + state.bgY}) scale(${state.bgScale})" style="${styleStr}" opacity="${state.bgOpacity/100}"><image href="${state.bgImageSrc}" x="${-nw/2}" y="${-nh/2}" width="${nw}" height="${nh}"/></g>`;
                 }
             }
             const ags = Math.max(state.spacing, state.size);
