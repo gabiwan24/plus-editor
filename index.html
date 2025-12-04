@@ -130,7 +130,7 @@
         <!-- Header -->
         <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-3">
-                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v32</p></div>
+                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v34 ViewportExport</p></div>
             </div>
             <div class="flex items-center gap-2">
                 <!-- Random Button -->
@@ -337,6 +337,7 @@
                         <button id="btn-tool-minus" class="tool-btn flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors">-</button>
                         <button id="btn-tool-delete" class="tool-btn flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors text-red-500">X</button>
                     </div>
+                    <button id="btn-tool-clear-all" class="w-full py-1 mt-2 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors text-gray-500">Alle reduzieren (0)</button>
                     <div class="flex items-center space-x-1 justify-end">
                         <input type="checkbox" id="check-influence" class="w-3 h-3 text-blue-600 rounded border-gray-300">
                         <label for="check-influence" class="text-[10px] text-gray-500 cursor-pointer">Soft</label>
@@ -421,7 +422,7 @@
             checkEditMode: document.getElementById('check-edit-mode'), editModeControls: document.getElementById('edit-mode-controls'),
             checkPaintScale: document.getElementById('check-paint-scale'), checkPaintThickness: document.getElementById('check-paint-thickness'),
             inputBrushSize: document.getElementById('input-brush-size'),
-            btnToolPlus: document.getElementById('btn-tool-plus'), btnToolMinus: document.getElementById('btn-tool-minus'), btnToolDelete: document.getElementById('btn-tool-delete'),
+            btnToolPlus: document.getElementById('btn-tool-plus'), btnToolMinus: document.getElementById('btn-tool-minus'), btnToolDelete: document.getElementById('btn-tool-delete'), btnToolClearAll: document.getElementById('btn-tool-clear-all'),
             checkInfluence: document.getElementById('check-influence'), brushCursor: document.getElementById('brush-cursor'),
             inputSize: document.getElementById('input-size'), inputThickness: document.getElementById('input-thickness'), inputSpacing: document.getElementById('input-spacing'),
             inputColor1: document.getElementById('input-color-1'), inputColor2: document.getElementById('input-color-2'), 
@@ -763,6 +764,21 @@
         }
 
         ui.btnRandom.addEventListener('click', randomizeConfig);
+        
+        // NEW BUTTON CLEAR ALL LISTENER
+        ui.btnToolClearAll.addEventListener('click', () => {
+            const len = gridCache.length;
+            for(let i=0; i<len; i++) {
+                const item = gridCache[i];
+                const key = item.key;
+                // get current or default (default scale is 1.0)
+                let d = state.modifiedCells.get(key) || { scale: 1.0, thMulti: 1.0 };
+                // set scale to 0
+                d = { ...d, scale: 0 };
+                state.modifiedCells.set(key, d);
+                updateCellVisual(item, d);
+            }
+        });
 
         // Listeners
         ui.checkAnimation.addEventListener('change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
@@ -907,10 +923,19 @@
                 }
             }
             const activeGridSize = Math.max(state.spacing, state.size); const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100; const cx = w / 2; const cy = h / 2;
-            const cols = Math.ceil((w * 1.2) / activeGridSize) + 4; const rows = Math.ceil((h * 1.2) / activeGridSize) + 4;
-            const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
             
-            // Plus Fill for Canvas
+            // ADJUSTED EXPORT BOUNDS TO MATCH VIEWPORT ONLY
+            const halfW = w / 2;
+            const halfH = h / 2;
+            // +1 buffer to ensure elements on edge are drawn
+            const limitX = Math.ceil(halfW / activeGridSize) + 1;
+            const limitY = Math.ceil(halfH / activeGridSize) + 1;
+            
+            const startCol = -limitX; 
+            const endCol = limitX; 
+            const startRow = -limitY; 
+            const endRow = limitY;
+
             if (state.plusColor.active) {
                 if (state.plusColor.gradient) {
                     const angleRad = (state.plusGradientAngle - 90) * (Math.PI / 180); const halfDiag = Math.sqrt(w*w + h*h) / 2; 
@@ -953,8 +978,17 @@
                 }
             }
             const ags = Math.max(state.spacing, state.size); const cx = w/2; const cy = h/2;
-            const cols = Math.ceil((w * 1.2) / ags) + 4; const rows = Math.ceil((h * 1.2) / ags) + 4;
-            const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
+            
+            // ADJUSTED EXPORT BOUNDS TO MATCH VIEWPORT ONLY
+            const halfW = w / 2;
+            const halfH = h / 2;
+            const limitX = Math.ceil(halfW / ags) + 1;
+            const limitY = Math.ceil(halfH / ags) + 1;
+            const startCol = -limitX; 
+            const endCol = limitX; 
+            const startRow = -limitY; 
+            const endRow = limitY;
+
             let plusFill = 'fill="#ffffff"'; if (state.plusColor.active) { if (state.plusColor.gradient) plusFill = 'fill="url(#gPlus)"'; else plusFill = `fill="${state.plusColor.col1}"`; }
             svg += `<g ${plusFill}>`;
             for(let x=startCol; x<=endCol; x++) for(let y=startRow; y<=endRow; y++) {
