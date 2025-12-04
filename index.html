@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Endloses Raster Configurator</title>
+    <title>The Plus is us</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
             --size: 30px;            
-            /* Start-Dicke berechnet: 30px * 17.75% = 5.325px */
             --thickness: 5.325px;        
             --grid-size: 100px;
             --col-count: 11; 
@@ -18,6 +17,10 @@
             --bg-color-2: #000000;
             --bg-grad-angle: 225deg;
             
+            /* Plus Farben */
+            --plus-col-1: #ffffff;
+            --plus-col-2: #dddddd;
+            --plus-grad-angle: 45deg;
             --plus-bg: #ffffff; 
             
             /* Bild */
@@ -65,19 +68,12 @@
             height: 100%;
             max-width: 100%;
             max-height: 100%;
-            transform-origin: 50% 50%; /* Explicit Center */
+            transform-origin: 50% 50%; 
             will-change: transform;
         }
         
-        /* Corrected ID Selectors for Intro Parts */
-        #intro-plus-poly {
-            fill: #ffffff;
-        }
-        #intro-logo-rest { /* Korrigierte ID hier */
-            fill: #ffffff;
-            transition: opacity 0.8s ease-out; 
-        }
-
+        #intro-plus-poly { fill: #ffffff; }
+        #intro-logo-rest { fill: #ffffff; transition: opacity 0.6s ease-out; }
 
         #ui-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
         #brush-cursor {
@@ -97,7 +93,6 @@
             --paint-scale: 1; 
             --anim-scale: 1;  
             --th-multi: 1;
-            --total-scale: calc(var(--paint-scale) * var(--anim-scale));
             
             width: calc(var(--size) * var(--paint-scale));
             height: calc(var(--size) * var(--paint-scale));
@@ -134,12 +129,20 @@
     <aside id="sidebar" class="w-1/5 min-w-[240px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl relative h-full">
         <!-- Header -->
         <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
-            <div><h1 class="text-sm font-bold text-gray-900 leading-tight">Configurator</h1><p class="text-[10px] text-gray-400">v30 IntroFix</p></div>
-            <button id="btn-close-sidebar" class="text-gray-400 hover:text-gray-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+            <div class="flex items-center gap-3">
+                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v32</p></div>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Random Button -->
+                <button id="btn-random" class="text-gray-400 hover:text-blue-600 transition-colors" title="Zufallsgenerator">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </button>
+                <button id="btn-close-sidebar" class="text-gray-400 hover:text-gray-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+            </div>
         </div>
 
         <div id="sidebar-content" class="flex-1 px-4 py-2 overflow-y-auto space-y-3">
-            <!-- Sidebar Content -->
+            
             <!-- Basis Raster -->
             <div class="space-y-2">
                 <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Basis Raster</h2>
@@ -217,6 +220,7 @@
             <div class="space-y-3">
                 <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Farbe & Verlauf</h2>
                 
+                <!-- HINTERGRUND Sektion -->
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-700 block">Farbe Hintergrund</label>
                     <div class="flex items-center gap-2">
@@ -234,14 +238,14 @@
                     <div id="gradient-edit-container" class="hidden flex justify-end">
                         <div class="flex items-center space-x-1">
                             <input type="checkbox" id="check-grad-edit" class="w-3 h-3 text-purple-600 rounded border-gray-300">
-                            <label for="check-grad-edit" class="text-[10px] text-gray-500 cursor-pointer">Richtung ändern</label>
+                            <label for="check-grad-edit" class="text-[10px] text-gray-500 cursor-pointer">Richtung</label>
                         </div>
                     </div>
                 </div>
 
                 <div class="h-px bg-gray-50 border-t border-dashed border-gray-200"></div>
 
-                <!-- PLUS FARBE -->
+                <!-- PLUS FARBE Sektion -->
                 <div class="space-y-1">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
@@ -249,6 +253,7 @@
                             <label for="check-plus-color" class="text-[10px] font-bold text-gray-700 cursor-pointer">Farbe Plus</label>
                         </div>
                     </div>
+                    
                     <div id="plus-color-controls" class="hidden pl-2 border-l-2 border-indigo-100 mt-1 space-y-1">
                         <div class="flex items-center gap-2">
                             <input type="color" id="input-plus-col-1" value="#ffffff" class="w-5 h-5 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
@@ -260,6 +265,12 @@
                             <div class="flex items-center space-x-1">
                                 <input type="checkbox" id="check-plus-gradient" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
                                 <label for="check-plus-gradient" class="text-[9px] text-gray-500 cursor-pointer">Verlauf</label>
+                            </div>
+                        </div>
+                        <div id="plus-gradient-edit-container" class="hidden flex justify-end">
+                            <div class="flex items-center space-x-1">
+                                <input type="checkbox" id="check-plus-grad-edit" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
+                                <label for="check-plus-grad-edit" class="text-[9px] text-gray-500 cursor-pointer">Richtung</label>
                             </div>
                         </div>
                     </div>
@@ -277,6 +288,7 @@
                         <label id="label-bg-edit" for="check-bg-edit" class="text-[10px] text-gray-500 cursor-pointer opacity-50">Edit</label>
                     </div>
                 </div>
+                
                 <div id="bg-controls" class="space-y-1.5 opacity-50 pointer-events-none transition-opacity">
                     <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
                         <label class="text-[10px] text-gray-500">Zoom</label>
@@ -309,6 +321,7 @@
                     <input type="checkbox" id="check-edit-mode" class="w-3 h-3 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
                     <label for="check-edit-mode" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider cursor-pointer">Mal-Modus</label>
                 </div>
+                
                 <div id="edit-mode-controls" class="space-y-2 hidden">
                     <div class="flex space-x-3 p-1.5 bg-gray-50 rounded border border-gray-100">
                         <div class="flex items-center space-x-1"><input type="checkbox" id="check-paint-scale" checked class="w-3 h-3 text-blue-600 rounded"><label for="check-paint-scale" class="text-[10px] cursor-pointer">Size</label></div>
@@ -334,6 +347,7 @@
 
         <!-- Footer / Export fixed bottom -->
         <div class="p-3 border-t border-gray-200 bg-gray-50 shrink-0 space-y-2">
+            <!-- Format Auswahl & Checkbox -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <select id="input-export-format" class="text-[10px] border-gray-300 rounded bg-white text-gray-600 py-0.5 pl-1 pr-4 h-6 border focus:ring-0 focus:border-blue-500 cursor-pointer">
@@ -356,8 +370,8 @@
     <main id="main-area" class="flex-1 flex items-center justify-center relative">
         <!-- INTRO LAYER -->
         <div id="intro-layer">
-            <!-- SVG with updated polygon and centered origin -->
-            <svg id="intro-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1920 1080" shape-rendering="geometricPrecision">
+            <!-- Updated Combined SVG with Group Translate Removed -->
+            <svg id="intro-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1920 1080">
                 <g id="intro-group">
                     <!-- Rest -->
                     <path id="intro-logo-rest" d="M1474.62,414.34c-45.54-87.33-136.83-147.09-242.17-147.09h-321.39v96.71h321.38c48,0,91.48,19.25,123.27,50.38,32.64,31.96,52.96,76.43,52.96,125.66,0,57.09-27.37,107.72-69.58,139.89-29.63,22.58-66.52,36.15-106.64,36.15h-544.88c-39.28,0-75.45-13.02-104.76-34.75-43.28-32.09-71.46-83.35-71.46-141.29,0-97.17,78.94-176.04,176.22-176.04h112.05v-96.71h-112.05c-150.75,0-273.06,122.17-273.06,272.75,0,51.49,14.99,99.85,40.48,141.29,48.14,78.28,134.41,131.47,232.58,131.47h544.89c98.92,0,185.76-53.61,233.68-132.87,24.81-41.04,39.38-88.83,39.38-139.89,0-45.35-11.26-88.03-30.88-125.66Z" fill="#ffffff"/>
@@ -383,6 +397,10 @@
             animation: { active: false, intensity: 0.5, randomness: 0.2, speed: 1.5, startTime: 0 },
             depth: { active: false, strength: 5, threshold: 1.0 },
             plusColor: { active: false, gradient: false, col1: '#ffffff', col2: '#dddddd' },
+            // New State for Plus Gradient Editing
+            plusGradientAngle: 45,
+            isEditingPlusGrad: false,
+            
             isPaintMode: false, brushSize: 100, activeTool: 'plus', useInfluence: false,
             modifiedCells: new Map(), isPainting: false, paintTargetScale: true, paintTargetThickness: false,
             bgColor1: '#1500FF', bgColor2: '#000000', hasGradient: false, gradientAngle: 225, 
@@ -393,9 +411,8 @@
         let gridCache = [];
 
         const ui = {
-            // ... (UI mapping same as before)
             root: document.documentElement, mainArea: document.getElementById('main-area'), dropOverlay: document.getElementById('drop-overlay'), gridContainer: document.getElementById('grid-container'),
-            sidebar: document.getElementById('sidebar'), btnToggleMenu: document.getElementById('btn-toggle-menu'), btnCloseSidebar: document.getElementById('btn-close-sidebar'),
+            sidebar: document.getElementById('sidebar'), btnToggleMenu: document.getElementById('btn-toggle-menu'), btnCloseSidebar: document.getElementById('btn-close-sidebar'), btnRandom: document.getElementById('btn-random'),
             introLayer: document.getElementById('intro-layer'), introSvg: document.getElementById('intro-svg'), introRestPath: document.getElementById('intro-logo-rest'),
             checkAnimation: document.getElementById('check-animation'), animControls: document.getElementById('anim-controls'),
             inputAnimIntensity: document.getElementById('input-anim-intensity'), inputAnimRandom: document.getElementById('input-anim-random'), inputAnimSpeed: document.getElementById('input-anim-speed'),
@@ -413,6 +430,7 @@
             checkPlusColor: document.getElementById('check-plus-color'), plusColorControls: document.getElementById('plus-color-controls'),
             inputPlusCol1: document.getElementById('input-plus-col-1'), inputPlusCol2: document.getElementById('input-plus-col-2'),
             plusCol2Container: document.getElementById('plus-col-2-container'), checkPlusGradient: document.getElementById('check-plus-gradient'),
+            plusGradientEditContainer: document.getElementById('plus-gradient-edit-container'), checkPlusGradEdit: document.getElementById('check-plus-grad-edit'),
             gradLineSvg: document.getElementById('grad-line-svg'), gradLineVisual: document.getElementById('grad-line-visual'), gradStartPoint: document.getElementById('grad-start-point'), gradEndPoint: document.getElementById('grad-end-point'),
             checkBgEdit: document.getElementById('check-bg-edit'), labelBgEdit: document.getElementById('label-bg-edit'), bgControls: document.getElementById('bg-controls'),
             inputBgScale: document.getElementById('input-bg-scale'), checkBgMultiply: document.getElementById('check-bg-multiply'), checkBgMono: document.getElementById('check-bg-mono'), inputBgOpacity: document.getElementById('input-bg-opacity'), bgImageElement: document.getElementById('bg-image-element'),
@@ -465,54 +483,26 @@
             requestAnimationFrame(animationLoop);
         }
 
-        // PRECISE INTRO LOGIC
         function calculateIntroScale() {
-            // Corrected Logo Plus Height in SVG (545.5px)
             const svgPlusHeight = 545.5; 
-            
-            const winW = window.innerWidth;
-            const winH = window.innerHeight;
-            const svgW = 1920;
-            const svgH = 1080;
-            
-            // preserveAspectRatio="xMidYMid meet" logic
-            const scaleX = winW / svgW;
-            const scaleY = winH / svgH;
+            const winW = window.innerWidth; const winH = window.innerHeight;
+            const svgW = 1920; const svgH = 1080;
+            const scaleX = winW / svgW; const scaleY = winH / svgH;
             const fitScale = Math.min(scaleX, scaleY);
-            
             const renderedPlusHeight = svgPlusHeight * fitScale;
-            
             return state.size / renderedPlusHeight;
         }
 
         window.addEventListener('load', () => {
             ui.introLayer.style.opacity = 1;
-            
             setTimeout(() => {
                 const targetScale = calculateIntroScale();
-                
                 ui.introSvg.style.transition = "transform 1.2s cubic-bezier(0.8, 0, 0.2, 1)";
                 ui.introSvg.style.transform = `scale(${targetScale})`;
-                
-                setTimeout(() => {
-                    if(ui.introRestPath) ui.introRestPath.style.opacity = 0;
-                }, 200); // Start fading out rest logo earlier
-
-                setTimeout(() => {
-                    ui.gridContainer.style.opacity = 1;
-                }, 1200); // Grid in after move completes (approx)
-
-                setTimeout(() => {
-                    ui.introLayer.style.backgroundColor = "transparent";
-                }, 1000);
-                
-                setTimeout(() => {
-                    ui.introLayer.style.opacity = 0;
-                    setTimeout(() => {
-                        ui.introLayer.style.display = 'none';
-                    }, 500);
-                }, 1400);
-                
+                setTimeout(() => { if(ui.introRestPath) ui.introRestPath.style.opacity = 0; }, 200);
+                setTimeout(() => { ui.gridContainer.style.opacity = 1; }, 1200); 
+                setTimeout(() => { ui.introLayer.style.backgroundColor = "transparent"; }, 1000);
+                setTimeout(() => { ui.introLayer.style.opacity = 0; setTimeout(() => { ui.introLayer.style.display = 'none'; }, 500); }, 1400);
             }, 500);
         });
 
@@ -534,7 +524,7 @@
             
             if (state.plusColor.active) {
                 if (state.plusColor.gradient) {
-                    ui.root.style.setProperty('--plus-bg', `linear-gradient(${state.gradientAngle}deg, ${state.plusColor.col1}, ${state.plusColor.col2})`);
+                    ui.root.style.setProperty('--plus-bg', `linear-gradient(${state.plusGradientAngle}deg, ${state.plusColor.col1}, ${state.plusColor.col2})`);
                 } else {
                     ui.root.style.setProperty('--plus-bg', state.plusColor.col1);
                 }
@@ -543,8 +533,19 @@
             }
 
             if (state.hasGradient) { ui.mainArea.classList.add('has-gradient'); ui.color2Container.classList.remove('hidden'); ui.gradientEditContainer.classList.remove('hidden'); } else { ui.mainArea.classList.remove('has-gradient'); ui.color2Container.classList.add('hidden'); ui.gradientEditContainer.classList.add('hidden'); }
-            if (state.plusColor.active) { ui.plusColorControls.classList.remove('hidden'); } else { ui.plusColorControls.classList.add('hidden'); }
-            if (state.plusColor.gradient) { ui.plusCol2Container.classList.remove('hidden'); } else { ui.plusCol2Container.classList.add('hidden'); }
+            
+            if (state.plusColor.active) { 
+                ui.plusColorControls.classList.remove('hidden'); 
+                if (state.plusColor.gradient) { 
+                    ui.plusCol2Container.classList.remove('hidden');
+                    ui.plusGradientEditContainer.classList.remove('hidden');
+                } else { 
+                    ui.plusCol2Container.classList.add('hidden');
+                    ui.plusGradientEditContainer.classList.add('hidden');
+                }
+            } else { 
+                ui.plusColorControls.classList.add('hidden'); 
+            }
 
             if(ui.valSize) ui.valSize.innerText = `${state.size}px`;
             if(ui.valThicknessPercent) ui.valThicknessPercent.innerText = `${state.thicknessPercent}%`;
@@ -573,6 +574,7 @@
             item.el.style.setProperty('--paint-scale', data.scale.toFixed(3));
             item.el.style.setProperty('--th-multi', data.thMulti);
             item.paintScale = data.scale;
+            
             if (!state.animation.active) {
                 if (state.depth.active && data.scale > state.depth.threshold) {
                     let blurPx = (data.scale - state.depth.threshold) * state.depth.strength;
@@ -657,82 +659,316 @@
             ui.gridContainer.appendChild(frag);
         }
 
-        // ... (Rest of helper functions and event listeners remain the same)
         function updateBgTransform() { ui.root.style.setProperty('--bg-x', `${state.bgX}px`); ui.root.style.setProperty('--bg-y', `${state.bgY}px`); ui.root.style.setProperty('--bg-scale', state.bgScale); }
+
         function updateInteractionStates() {
-            if (state.isEditingGrad) { ui.mainArea.classList.add('is-editing-grad'); ui.mainArea.classList.remove('is-editing-bg'); ui.checkBgEdit.disabled = true; if(ui.labelBgEdit) ui.labelBgEdit.classList.add('opacity-50'); } else { ui.mainArea.classList.remove('is-editing-grad'); if (state.bgImageSrc && !state.isPaintMode) { ui.checkBgEdit.disabled = false; if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50'); if (ui.checkBgEdit.checked) { ui.mainArea.classList.add('is-editing-bg'); ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); state.isEditingBg = true; } } }
-            if (!state.isEditingGrad && state.isEditingBg && !state.isPaintMode) ui.mainArea.classList.add('is-editing-bg'); else if (!state.isEditingGrad) ui.mainArea.classList.remove('is-editing-bg');
+            if (state.isEditingGrad) {
+                ui.mainArea.classList.add('is-editing-grad'); ui.mainArea.classList.remove('is-editing-bg'); 
+                ui.checkBgEdit.disabled = true; if(ui.labelBgEdit) ui.labelBgEdit.classList.add('opacity-50');
+                ui.checkPlusGradEdit.disabled = true;
+            } else if (state.isEditingPlusGrad) {
+                ui.mainArea.classList.add('is-editing-grad'); ui.mainArea.classList.remove('is-editing-bg');
+                ui.checkBgEdit.disabled = true; if(ui.labelBgEdit) ui.labelBgEdit.classList.add('opacity-50');
+                ui.checkGradEdit.disabled = true;
+            } else {
+                ui.mainArea.classList.remove('is-editing-grad');
+                ui.checkGradEdit.disabled = false;
+                ui.checkPlusGradEdit.disabled = false;
+                if (state.bgImageSrc && !state.isPaintMode) { 
+                    ui.checkBgEdit.disabled = false; if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50');
+                    if (ui.checkBgEdit.checked) { ui.mainArea.classList.add('is-editing-bg'); ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); state.isEditingBg = true; }
+                }
+            }
+            if ((!state.isEditingGrad && !state.isEditingPlusGrad) && state.isEditingBg && !state.isPaintMode) ui.mainArea.classList.add('is-editing-bg'); 
+            else if (!state.isEditingGrad && !state.isEditingPlusGrad) ui.mainArea.classList.remove('is-editing-bg');
         }
-        function deactivateGradientMode() { if (state.isEditingGrad) { state.isEditingGrad = false; ui.checkGradEdit.checked = false; updateInteractionStates(); } }
+        function deactivateGradientMode() { 
+            state.isEditingGrad = false; ui.checkGradEdit.checked = false; 
+            state.isEditingPlusGrad = false; ui.checkPlusGradEdit.checked = false;
+            updateInteractionStates(); 
+        }
         
+        // RANDOMIZER LOGIC
+        function randomizeConfig() {
+            // Basic
+            state.size = Math.floor(Math.random() * 200) + 20;
+            state.thicknessPercent = (Math.random() * 80) + 5;
+            state.spacing = Math.floor(Math.random() * 200) + 20;
+            
+            // Colors - generate random hex
+            const rHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            state.bgColor1 = rHex();
+            state.bgColor2 = rHex();
+            state.hasGradient = Math.random() > 0.5;
+            state.gradientAngle = Math.floor(Math.random() * 360);
+            
+            state.plusColor.active = Math.random() > 0.3;
+            state.plusColor.gradient = Math.random() > 0.5;
+            state.plusColor.col1 = rHex();
+            state.plusColor.col2 = rHex();
+            state.plusGradientAngle = Math.floor(Math.random() * 360);
+            
+            // Animation
+            state.animation.active = Math.random() > 0.6; // 40% chance active
+            if(state.animation.active) {
+                state.animation.intensity = Math.random();
+                state.animation.speed = 0.5 + Math.random() * 3;
+                state.animation.randomness = Math.random();
+            }
+
+            // Depth
+            state.depth.active = Math.random() > 0.7;
+            if(state.depth.active) {
+                state.depth.strength = Math.floor(Math.random() * 15) + 1;
+                state.depth.threshold = 0.5 + Math.random() * 2;
+            }
+
+            // Sync UI Inputs
+            ui.inputSize.value = state.size;
+            ui.inputThickness.value = state.thicknessPercent;
+            ui.inputSpacing.value = state.spacing;
+            
+            ui.inputColor1.value = state.bgColor1;
+            ui.inputColor2.value = state.bgColor2;
+            ui.checkGradient.checked = state.hasGradient;
+            
+            ui.checkPlusColor.checked = state.plusColor.active;
+            ui.checkPlusGradient.checked = state.plusColor.gradient;
+            ui.inputPlusCol1.value = state.plusColor.col1;
+            ui.inputPlusCol2.value = state.plusColor.col2;
+            
+            ui.checkAnimation.checked = state.animation.active;
+            ui.inputAnimIntensity.value = state.animation.intensity * 100;
+            ui.inputAnimRandom.value = state.animation.randomness * 100;
+            ui.inputAnimSpeed.value = state.animation.speed * 10;
+            if(state.animation.active) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); }
+            
+            ui.checkDepth.checked = state.depth.active;
+            ui.inputDepthStrength.value = state.depth.strength;
+            ui.inputDepthThreshold.value = state.depth.threshold;
+            if(state.depth.active) ui.depthControls.classList.remove('hidden'); else ui.depthControls.classList.add('hidden');
+
+            updateVisuals();
+            // Update Display spans
+            if(ui.dispSize) ui.dispSize.innerText = state.size + 'px';
+            if(ui.dispThickness) ui.dispThickness.innerText = state.thicknessPercent.toFixed(1) + '%';
+            if(ui.dispSpacing) ui.dispSpacing.innerText = state.spacing + 'px';
+            // ... other displays update implicitly via listeners or updateVisuals if wired, but listeners only fire on user input.
+            // Update spans manually for randomizer:
+            if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText = Math.floor(state.animation.intensity*100) + '%';
+            if(ui.dispAnimRandom) ui.dispAnimRandom.innerText = Math.floor(state.animation.randomness*100) + '%';
+            if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText = state.animation.speed.toFixed(1) + 'x';
+            if(ui.dispDepthStrength) ui.dispDepthStrength.innerText = state.depth.strength;
+            if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText = state.depth.threshold.toFixed(1) + 'x';
+        }
+
+        ui.btnRandom.addEventListener('click', randomizeConfig);
+
+        // Listeners
         ui.checkAnimation.addEventListener('change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
         ui.inputAnimIntensity.addEventListener('input', e => { state.animation.intensity = parseInt(e.target.value)/100; if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText=e.target.value+'%'; });
         ui.inputAnimRandom.addEventListener('input', e => { state.animation.randomness = parseInt(e.target.value)/100; if(ui.dispAnimRandom) ui.dispAnimRandom.innerText=e.target.value+'%'; });
         ui.inputAnimSpeed.addEventListener('input', e => { state.animation.speed = parseInt(e.target.value)/10; if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText=state.animation.speed+'x'; });
+        
         ui.checkDepth.addEventListener('change', e => { state.depth.active = e.target.checked; if(e.target.checked) ui.depthControls.classList.remove('hidden'); else ui.depthControls.classList.add('hidden'); updateVisuals(); });
         ui.inputDepthStrength.addEventListener('input', e => { state.depth.strength = parseInt(e.target.value); if(ui.dispDepthStrength) ui.dispDepthStrength.innerText=state.depth.strength; updateVisuals(); });
         ui.inputDepthThreshold.addEventListener('input', e => { state.depth.threshold = parseFloat(e.target.value); if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText=state.depth.threshold+'x'; updateVisuals(); });
+
         ui.checkPlusColor.addEventListener('change', e => { state.plusColor.active = e.target.checked; updateVisuals(); });
         ui.checkPlusGradient.addEventListener('change', e => { state.plusColor.gradient = e.target.checked; updateVisuals(); });
         ui.inputPlusCol1.addEventListener('input', e => { state.plusColor.col1 = e.target.value; updateVisuals(); });
         ui.inputPlusCol2.addEventListener('input', e => { state.plusColor.col2 = e.target.value; updateVisuals(); });
+        ui.checkPlusGradEdit.addEventListener('change', e => { 
+            state.isEditingPlusGrad = e.target.checked; 
+            if(e.target.checked) {
+                // Disable other edits
+                state.isEditingGrad = false; ui.checkGradEdit.checked = false;
+                state.isEditingBg = false; ui.checkBgEdit.checked = false;
+            }
+            updateInteractionStates(); 
+        });
+
         ui.checkEditMode.addEventListener('change', e => { state.isPaintMode = e.target.checked; if(e.target.checked) { ui.editModeControls.classList.remove('hidden'); ui.mainArea.classList.add('is-painting'); ui.brushCursor.style.display='block'; ui.checkBgEdit.checked=false; ui.checkGradEdit.checked=false; state.isEditingBg=false; state.isEditingGrad=false; } else { ui.editModeControls.classList.add('hidden'); ui.mainArea.classList.remove('is-painting'); ui.brushCursor.style.display='none'; } });
         ui.checkPaintScale.addEventListener('change', e => state.paintTargetScale = e.target.checked);
         ui.checkPaintThickness.addEventListener('change', e => state.paintTargetThickness = e.target.checked);
         ui.inputBrushSize.addEventListener('input', e => { state.brushSize = parseInt(e.target.value); if(ui.dispBrushSize) ui.dispBrushSize.innerText=state.brushSize+'px'; updateVisuals(); });
         ui.checkInfluence.addEventListener('change', e => state.useInfluence = e.target.checked);
+        
         ui.btnToolPlus.addEventListener('click', () => setTool('plus')); ui.btnToolMinus.addEventListener('click', () => setTool('minus')); ui.btnToolDelete.addEventListener('click', () => setTool('delete'));
         function setTool(t) { state.activeTool = t; ui.btnToolPlus.classList.remove('active'); ui.btnToolMinus.classList.remove('active'); ui.btnToolDelete.classList.remove('active'); if(t==='plus') ui.btnToolPlus.classList.add('active'); if(t==='minus') ui.btnToolMinus.classList.add('active'); if(t==='delete') ui.btnToolDelete.classList.add('active'); }
+
         ui.inputSize.addEventListener('input', e => { state.size = parseInt(e.target.value); if(ui.dispSize) ui.dispSize.innerText=state.size+'px'; updateVisuals(); });
         ui.inputThickness.addEventListener('input', e => { state.thicknessPercent = parseFloat(e.target.value); if(ui.dispThickness) ui.dispThickness.innerText=parseFloat(e.target.value).toFixed(1)+'%'; updateVisuals(); });
         ui.inputSpacing.addEventListener('input', e => { state.spacing = parseInt(e.target.value); if(ui.dispSpacing) ui.dispSpacing.innerText=state.spacing+'px'; updateVisuals(); });
         ui.inputColor1.addEventListener('input', e => { state.bgColor1 = e.target.value; deactivateGradientMode(); updateVisuals(); });
         ui.inputColor2.addEventListener('input', e => { state.bgColor2 = e.target.value; deactivateGradientMode(); updateVisuals(); });
         ui.checkGradient.addEventListener('change', e => { state.hasGradient = e.target.checked; updateVisuals(); });
+        
         function toggleSidebar() { ui.sidebar.classList.toggle('collapsed'); setTimeout(recalcGridGeometry, 310); }
         ui.btnToggleMenu.addEventListener('click', toggleSidebar);
         ui.btnCloseSidebar.addEventListener('click', toggleSidebar);
+
         ui.inputBgScale.addEventListener('input', e => { state.bgScale = parseFloat(e.target.value); if(ui.dispBgScale) ui.dispBgScale.innerText=state.bgScale+'x'; updateBgTransform(); });
         ui.checkBgMultiply.addEventListener('change', e => { state.bgMultiply = e.target.checked; updateVisuals(); });
         ui.checkBgMono.addEventListener('change', e => { state.bgMono = e.target.checked; updateVisuals(); });
         ui.inputBgOpacity.addEventListener('input', e => { state.bgOpacity = parseInt(e.target.value); if(ui.dispBgOpacity) ui.dispBgOpacity.innerText=state.bgOpacity+'%'; updateVisuals(); });
-        ui.checkGradEdit.addEventListener('change', e => { state.isEditingGrad = e.target.checked; updateInteractionStates(); });
-        ui.checkBgEdit.addEventListener('change', e => { state.isEditingBg = e.target.checked; if (e.target.checked) ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); else ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); updateInteractionStates(); });
+        ui.checkGradEdit.addEventListener('change', e => { 
+            state.isEditingGrad = e.target.checked; 
+            if(e.target.checked) {
+                 // disable other edit modes
+                 state.isEditingPlusGrad = false; ui.checkPlusGradEdit.checked = false;
+            }
+            updateInteractionStates(); 
+        });
+        ui.checkBgEdit.addEventListener('change', e => { 
+            state.isEditingBg = e.target.checked; 
+            if (e.target.checked) ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); 
+            else ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); 
+            updateInteractionStates(); 
+        });
+
         ui.mainArea.addEventListener('pointermove', e => {
             const rect = ui.mainArea.getBoundingClientRect(); state.mouseX = e.clientX; state.mouseY = e.clientY;
             ui.root.style.setProperty('--brush-x', `${e.clientX - rect.left}px`); ui.root.style.setProperty('--brush-y', `${e.clientY - rect.top}px`);
+            
             if (!state.isPaintMode && state.isDragging) {
-                if (state.isEditingGrad) {
+                // Gradient Editing
+                if (state.isEditingGrad || state.isEditingPlusGrad) {
                     const dx = e.clientX - state.startX; const dy = e.clientY - state.startY;
                     const currentRelX = e.clientX - rect.left; const currentRelY = e.clientY - rect.top;
                     ui.gradLineVisual.setAttribute('x2', currentRelX); ui.gradLineVisual.setAttribute('y2', currentRelY);
                     ui.gradEndPoint.setAttribute('cx', currentRelX); ui.gradEndPoint.setAttribute('cy', currentRelY);
                     const rad = Math.atan2(dy, dx); let deg = rad * (180 / Math.PI) + 90; 
-                    state.gradientAngle = Math.round(deg); updateVisuals();
+                    
+                    if (state.isEditingGrad) state.gradientAngle = Math.round(deg);
+                    else state.plusGradientAngle = Math.round(deg);
+                    
+                    updateVisuals();
                 } else if (state.isEditingBg && state.bgImageSrc) {
                     const dx = e.clientX - state.lastMouseX; const dy = e.clientY - state.lastMouseY;
                     state.bgX += dx; state.bgY += dy; state.lastMouseX = e.clientX; state.lastMouseY = e.clientY; updateBgTransform();
                 }
             }
         });
-        ui.mainArea.addEventListener('pointerdown', e => { if(state.isPaintMode) { state.isPainting=true; updatePaintLoop(); applyBrush(e.clientX, e.clientY); } else { state.isDragging = true; state.startX = e.clientX; state.startY = e.clientY; if (state.isEditingGrad) { const rect = ui.mainArea.getBoundingClientRect(); const relX = e.clientX - rect.left; const relY = e.clientY - rect.top; ui.gradLineVisual.style.display = 'block'; ui.gradLineSvg.style.display = 'block'; ui.gradLineVisual.setAttribute('x1', relX); ui.gradLineVisual.setAttribute('y1', relY); ui.gradLineVisual.setAttribute('x2', relX); ui.gradLineVisual.setAttribute('y2', relY); ui.gradStartPoint.setAttribute('cx', relX); ui.gradStartPoint.setAttribute('cy', relY); ui.gradEndPoint.setAttribute('cx', relX); ui.gradEndPoint.setAttribute('cy', relY); } else if (state.isEditingBg) { state.lastMouseX = e.clientX; state.lastMouseY = e.clientY; } } });
-        window.addEventListener('pointerup', () => { state.isDragging = false; state.isPainting = false; if (state.isEditingGrad) ui.gradLineSvg.style.display = 'none'; });
+        ui.mainArea.addEventListener('pointerdown', e => { 
+            if(state.isPaintMode) { state.isPainting=true; updatePaintLoop(); applyBrush(e.clientX, e.clientY); } 
+            else {
+                state.isDragging = true; state.startX = e.clientX; state.startY = e.clientY;
+                if (state.isEditingGrad || state.isEditingPlusGrad) {
+                    const rect = ui.mainArea.getBoundingClientRect(); const relX = e.clientX - rect.left; const relY = e.clientY - rect.top;
+                    ui.gradLineVisual.style.display = 'block'; ui.gradLineSvg.style.display = 'block'; 
+                    ui.gradLineVisual.setAttribute('x1', relX); ui.gradLineVisual.setAttribute('y1', relY); ui.gradLineVisual.setAttribute('x2', relX); ui.gradLineVisual.setAttribute('y2', relY); ui.gradStartPoint.setAttribute('cx', relX); ui.gradStartPoint.setAttribute('cy', relY); ui.gradEndPoint.setAttribute('cx', relX); ui.gradEndPoint.setAttribute('cy', relY);
+                } else if (state.isEditingBg) { state.lastMouseX = e.clientX; state.lastMouseY = e.clientY; }
+            }
+        });
+        window.addEventListener('pointerup', () => { state.isDragging = false; state.isPainting = false; if (state.isEditingGrad || state.isEditingPlusGrad) ui.gradLineSvg.style.display = 'none'; });
         window.addEventListener('resize', () => recalcGridGeometry());
-        // Drag & Drop & Export same as before...
+
+        // -- DRAG & DROP --
         let dragCounter = 0;
         function handleDragEnter(e) { e.preventDefault(); e.stopPropagation(); dragCounter++; if (dragCounter > 0) ui.dropOverlay.style.display = 'flex'; }
         function handleDragLeave(e) { e.preventDefault(); e.stopPropagation(); dragCounter--; if (dragCounter <= 0) { ui.dropOverlay.style.display = 'none'; dragCounter = 0; } }
         function handleDragOver(e) { e.preventDefault(); e.stopPropagation(); }
-        function handleDrop(e) { e.preventDefault(); e.stopPropagation(); dragCounter = 0; ui.dropOverlay.style.display = 'none'; const files = e.dataTransfer.files; if (files.length > 0 && files[0].type.startsWith('image/')) { const reader = new FileReader(); reader.onload = (evt) => { const img = new Image(); img.onload = () => { state.bgImageSrc = evt.target.result; ui.bgImageElement.src = state.bgImageSrc; ui.bgImageElement.style.display = 'block'; const scaleW = ui.mainArea.clientWidth / img.width; const scaleH = ui.mainArea.clientHeight / img.height; const initialScale = Math.max(scaleW, scaleH); state.bgScale = initialScale; state.bgX = 0; state.bgY = 0; ui.inputBgScale.value = initialScale; updateBgTransform(); ui.checkBgEdit.disabled = false; if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50'); }; img.src = evt.target.result; }; reader.readAsDataURL(files[0]); } }
+        function handleDrop(e) {
+            e.preventDefault(); e.stopPropagation(); dragCounter = 0; ui.dropOverlay.style.display = 'none';
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.bgImageSrc = evt.target.result; ui.bgImageElement.src = state.bgImageSrc; ui.bgImageElement.style.display = 'block';
+                        const scaleW = ui.mainArea.clientWidth / img.width; const scaleH = ui.mainArea.clientHeight / img.height;
+                        const initialScale = Math.max(scaleW, scaleH); state.bgScale = initialScale; state.bgX = 0; state.bgY = 0;
+                        ui.inputBgScale.value = initialScale; updateBgTransform(); ui.checkBgEdit.disabled = false; if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50');
+                    };
+                    img.src = evt.target.result;
+                };
+                reader.readAsDataURL(files[0]);
+            }
+        }
         window.addEventListener('dragenter', handleDragEnter); window.addEventListener('dragleave', handleDragLeave); window.addEventListener('dragover', handleDragOver); window.addEventListener('drop', handleDrop);
-        
-        function downloadPNG() { /* Same as before */ const canvas = document.createElement('canvas'); const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight; canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d'); if (ui.checkExportBg.checked) { if (state.hasGradient) { const angleRad = (state.gradientAngle - 90) * (Math.PI / 180); const halfDiag = Math.sqrt(w*w + h*h) / 2; const cx = w/2; const cy = h/2; const x0 = cx - Math.cos(angleRad) * halfDiag; const y0 = cy - Math.sin(angleRad) * halfDiag; const x1 = cx + Math.cos(angleRad) * halfDiag; const y1 = cy + Math.sin(angleRad) * halfDiag; const grad = ctx.createLinearGradient(x0, y0, x1, y1); grad.addColorStop(0, state.bgColor1); grad.addColorStop(1, state.bgColor2); ctx.fillStyle = grad; } else { ctx.fillStyle = state.bgColor1; } ctx.fillRect(0, 0, w, h); if (state.bgImageSrc && ui.bgImageElement) { const img = ui.bgImageElement; const naturalW = img.naturalWidth; const naturalH = img.naturalHeight; ctx.save(); ctx.translate(w/2 + state.bgX, h/2 + state.bgY); ctx.scale(state.bgScale, state.bgScale); ctx.globalAlpha = state.bgOpacity / 100; if (state.bgMultiply) ctx.globalCompositeOperation = 'multiply'; if (state.bgMono) ctx.filter = 'grayscale(100%)'; ctx.drawImage(img, -naturalW/2, -naturalH/2); ctx.restore(); } } const activeGridSize = Math.max(state.spacing, state.size); const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100; const cx = w / 2; const cy = h / 2; const cols = Math.ceil((w * 1.2) / activeGridSize) + 4; const rows = Math.ceil((h * 1.2) / activeGridSize) + 4; const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2); if (state.plusColor.active) { if (state.plusColor.gradient) { const angleRad = (state.gradientAngle - 90) * (Math.PI / 180); const halfDiag = Math.sqrt(w*w + h*h) / 2; const x0 = cx - Math.cos(angleRad) * halfDiag; const y0 = cy - Math.sin(angleRad) * halfDiag; const x1 = cx + Math.cos(angleRad) * halfDiag; const y1 = cy + Math.sin(angleRad) * halfDiag; const grad = ctx.createLinearGradient(x0, y0, x1, y1); grad.addColorStop(0, state.plusColor.col1); grad.addColorStop(1, state.plusColor.col2); ctx.fillStyle = grad; } else { ctx.fillStyle = state.plusColor.col1; } } else { ctx.fillStyle = '#ffffff'; } for(let x=startCol; x<=endCol; x++) { for(let y=startRow; y<=endRow; y++) { const px = cx + x * activeGridSize; const py = cy + y * activeGridSize; let s = 1.0; let t = 1.0; const k = `${x},${y}`; if(state.modifiedCells.has(k)) { const d = state.modifiedCells.get(k); s = d.scale; t = d.thMulti; } if (s > 0.05) { ctx.save(); if (state.depth.active && s > state.depth.threshold) { const blurPx = (s - state.depth.threshold) * state.depth.strength; if (blurPx > 0) ctx.filter = `blur(${blurPx}px)`; } const cS = bS * s; const cT = bT * t * s; ctx.fillRect(px - cS/2, py - cT/2, cS, cT); ctx.fillRect(px - cT/2, py - cS/2, cT, cS); ctx.restore(); } } } const url = canvas.toDataURL('image/png'); const a = document.createElement('a'); a.href = url; a.download = 'raster_export.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
-        function downloadSVG() { const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight; const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100; let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`; let defs = ""; if (state.hasGradient) defs += `<linearGradient id="gBg" gradientTransform="rotate(${state.gradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.bgColor1}"/><stop offset="100%" stop-color="${state.bgColor2}"/></linearGradient>`; if (state.plusColor.active && state.plusColor.gradient) { defs += `<linearGradient id="gPlus" gradientTransform="rotate(${state.gradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.plusColor.col1}"/><stop offset="100%" stop-color="${state.plusColor.col2}"/></linearGradient>`; } if(defs) svg += `<defs>${defs}</defs>`; if (ui.checkExportBg.checked) { if (state.hasGradient) svg += `<rect width="100%" height="100%" fill="url(#gBg)"/>`; else svg += `<rect width="100%" height="100%" fill="${state.bgColor1}"/>`; if (state.bgImageSrc) { const nw = ui.bgImageElement.naturalWidth; const nh = ui.bgImageElement.naturalHeight; let styleStr = ""; if (state.bgMultiply) styleStr += "mix-blend-mode: multiply; "; if (state.bgMono) styleStr += "filter: grayscale(100%); "; svg += `<g transform="translate(${w/2 + state.bgX}, ${h/2 + state.bgY}) scale(${state.bgScale})" style="${styleStr}" opacity="${state.bgOpacity/100}"><image href="${state.bgImageSrc}" x="${-nw/2}" y="${-nh/2}" width="${nw}" height="${nh}"/></g>`; } } const ags = Math.max(state.spacing, state.size); const cx = w/2; const cy = h/2; const cols = Math.ceil((w * 1.2) / ags) + 4; const rows = Math.ceil((h * 1.2) / ags) + 4; const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2); let plusFill = 'fill="#ffffff"'; if (state.plusColor.active) { if (state.plusColor.gradient) plusFill = 'fill="url(#gPlus)"'; else plusFill = `fill="${state.plusColor.col1}"`; } svg += `<g ${plusFill}>`; for(let x=startCol; x<=endCol; x++) for(let y=startRow; y<=endRow; y++) { const px = cx + x*ags; const py = cy + y*ags; let s = 1.0; let t = 1.0; const k = `${x},${y}`; if(state.modifiedCells.has(k)) { const d=state.modifiedCells.get(k); s=d.scale; t=d.thMulti; } if (s > 0.05) { const cS = bS * s; const cT = bT * t * s; svg += `<rect x="${px-cS/2}" y="${py-cT/2}" width="${cS}" height="${cT}"/><rect x="${px-cT/2}" y="${py-cS/2}" width="${cT}" height="${cS}"/>`; } } svg += `</g></svg>`; const b = new Blob([svg], {type: 'image/svg+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'raster.svg'; a.click(); }
+
+        // --- PNG EXPORT FUNCTION ---
+        function downloadPNG() {
+            const canvas = document.createElement('canvas'); const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight; canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d');
+            if (ui.checkExportBg.checked) {
+                if (state.hasGradient) {
+                    const angleRad = (state.gradientAngle - 90) * (Math.PI / 180); const halfDiag = Math.sqrt(w*w + h*h) / 2; const cx = w/2; const cy = h/2;
+                    const x0 = cx - Math.cos(angleRad) * halfDiag; const y0 = cy - Math.sin(angleRad) * halfDiag; const x1 = cx + Math.cos(angleRad) * halfDiag; const y1 = cy + Math.sin(angleRad) * halfDiag;
+                    const grad = ctx.createLinearGradient(x0, y0, x1, y1); grad.addColorStop(0, state.bgColor1); grad.addColorStop(1, state.bgColor2); ctx.fillStyle = grad;
+                } else { ctx.fillStyle = state.bgColor1; }
+                ctx.fillRect(0, 0, w, h);
+                if (state.bgImageSrc && ui.bgImageElement) {
+                    const img = ui.bgImageElement; const naturalW = img.naturalWidth; const naturalH = img.naturalHeight;
+                    ctx.save(); ctx.translate(w/2 + state.bgX, h/2 + state.bgY); ctx.scale(state.bgScale, state.bgScale);
+                    ctx.globalAlpha = state.bgOpacity / 100; if (state.bgMultiply) ctx.globalCompositeOperation = 'multiply'; if (state.bgMono) ctx.filter = 'grayscale(100%)';
+                    ctx.drawImage(img, -naturalW/2, -naturalH/2); ctx.restore();
+                }
+            }
+            const activeGridSize = Math.max(state.spacing, state.size); const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100; const cx = w / 2; const cy = h / 2;
+            const cols = Math.ceil((w * 1.2) / activeGridSize) + 4; const rows = Math.ceil((h * 1.2) / activeGridSize) + 4;
+            const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
+            
+            // Plus Fill for Canvas
+            if (state.plusColor.active) {
+                if (state.plusColor.gradient) {
+                    const angleRad = (state.plusGradientAngle - 90) * (Math.PI / 180); const halfDiag = Math.sqrt(w*w + h*h) / 2; 
+                    const x0 = cx - Math.cos(angleRad) * halfDiag; const y0 = cy - Math.sin(angleRad) * halfDiag; const x1 = cx + Math.cos(angleRad) * halfDiag; const y1 = cy + Math.sin(angleRad) * halfDiag;
+                    const grad = ctx.createLinearGradient(x0, y0, x1, y1); grad.addColorStop(0, state.plusColor.col1); grad.addColorStop(1, state.plusColor.col2); ctx.fillStyle = grad;
+                } else { ctx.fillStyle = state.plusColor.col1; }
+            } else { ctx.fillStyle = '#ffffff'; }
+
+            for(let x=startCol; x<=endCol; x++) {
+                for(let y=startRow; y<=endRow; y++) {
+                    const px = cx + x * activeGridSize; const py = cy + y * activeGridSize;
+                    let s = 1.0; let t = 1.0; const k = `${x},${y}`;
+                    if(state.modifiedCells.has(k)) { const d = state.modifiedCells.get(k); s = d.scale; t = d.thMulti; }
+                    if (s > 0.05) {
+                        ctx.save();
+                        if (state.depth.active && s > state.depth.threshold) { const blurPx = (s - state.depth.threshold) * state.depth.strength; if (blurPx > 0) ctx.filter = `blur(${blurPx}px)`; }
+                        const cS = bS * s; const cT = bT * t * s;
+                        ctx.fillRect(px - cS/2, py - cT/2, cS, cT); ctx.fillRect(px - cT/2, py - cS/2, cT, cS);
+                        ctx.restore();
+                    }
+                }
+            }
+            const url = canvas.toDataURL('image/png'); const a = document.createElement('a'); a.href = url; a.download = 'raster_export.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // --- SVG EXPORT FUNCTION ---
+        function downloadSVG() {
+            const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight; const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100;
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+            let defs = "";
+            if (state.hasGradient) defs += `<linearGradient id="gBg" gradientTransform="rotate(${state.gradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.bgColor1}"/><stop offset="100%" stop-color="${state.bgColor2}"/></linearGradient>`;
+            if (state.plusColor.active && state.plusColor.gradient) { defs += `<linearGradient id="gPlus" gradientTransform="rotate(${state.plusGradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.plusColor.col1}"/><stop offset="100%" stop-color="${state.plusColor.col2}"/></linearGradient>`; }
+            if(defs) svg += `<defs>${defs}</defs>`;
+            if (ui.checkExportBg.checked) {
+                if (state.hasGradient) svg += `<rect width="100%" height="100%" fill="url(#gBg)"/>`; else svg += `<rect width="100%" height="100%" fill="${state.bgColor1}"/>`; 
+                if (state.bgImageSrc) {
+                    const nw = ui.bgImageElement.naturalWidth; const nh = ui.bgImageElement.naturalHeight;
+                    let styleStr = ""; if (state.bgMultiply) styleStr += "mix-blend-mode: multiply; "; if (state.bgMono) styleStr += "filter: grayscale(100%); ";
+                    svg += `<g transform="translate(${w/2 + state.bgX}, ${h/2 + state.bgY}) scale(${state.bgScale})" style="${styleStr}" opacity="${state.bgOpacity/100}"><image href="${state.bgImageSrc}" x="${-nw/2}" y="${-nh/2}" width="${nw}" height="${nh}"/></g>`;
+                }
+            }
+            const ags = Math.max(state.spacing, state.size); const cx = w/2; const cy = h/2;
+            const cols = Math.ceil((w * 1.2) / ags) + 4; const rows = Math.ceil((h * 1.2) / ags) + 4;
+            const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
+            let plusFill = 'fill="#ffffff"'; if (state.plusColor.active) { if (state.plusColor.gradient) plusFill = 'fill="url(#gPlus)"'; else plusFill = `fill="${state.plusColor.col1}"`; }
+            svg += `<g ${plusFill}>`;
+            for(let x=startCol; x<=endCol; x++) for(let y=startRow; y<=endRow; y++) {
+                const px = cx + x*ags; const py = cy + y*ags;
+                let s = 1.0; let t = 1.0; const k = `${x},${y}`; if(state.modifiedCells.has(k)) { const d=state.modifiedCells.get(k); s=d.scale; t=d.thMulti; }
+                if (s > 0.05) { const cS = bS * s; const cT = bT * t * s; svg += `<rect x="${px-cS/2}" y="${py-cT/2}" width="${cS}" height="${cT}"/><rect x="${px-cT/2}" y="${py-cS/2}" width="${cT}" height="${cS}"/>`; }
+            }
+            svg += `</g></svg>`;
+            const b = new Blob([svg], {type: 'image/svg+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'raster.svg'; a.click();
+        }
+
         ui.btnExport.addEventListener('click', () => { const format = ui.inputExportFormat.value; if (format === 'png') { downloadPNG(); } else { downloadSVG(); } });
 
         updateVisuals();
     </script>
 </body>
 </html>
-
-
