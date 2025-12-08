@@ -3,917 +3,919 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organischer Halbmond - Animated & Colors</title>
+    <title>The Plus is us</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            /* Hintergrund: Ein tiefer blauer Verlauf */
-            background: radial-gradient(circle at center, #001e45 0%, #000510 100%);
-            color: #ccfbf1; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none;
+        :root {
+            --size: 30px;            
+            --thickness: 5.325px;        
+            --grid-size: 100px;
+            --col-count: 11; 
+            
+            /* Farben */
+            --bg-color-1: #0000FF;
+            --bg-color-2: #000000;
+            --bg-grad-angle: 225deg;
+            
+            /* Plus Farben */
+            --plus-col-1: #ffffff;
+            --plus-col-2: #00d4ff;
+            --plus-grad-angle: 45deg;
+            --plus-bg: #ffffff; 
+            
+            /* Bild */
+            --bg-image-url: none;
+            --bg-x: 0px; --bg-y: 0px; --bg-scale: 1; --bg-opacity: 1; --bg-blend: normal; --bg-filter: none;
+            
+            /* Tools */
+            --brush-size: 100px; --brush-x: -9999px; --brush-y: -9999px;
+            
+            /* Tiefe */
+            --depth-strength: 0px; 
         }
 
-        canvas {
-            background-color: transparent; 
-            touch-action: none; 
-        }
-
-        /* Container Wrapper für Stapelung unten links */
-        .ui-sidebar {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            display: flex;
-            flex-direction: column-reverse; /* Damit das Main Panel unten ist */
-            gap: 15px;
-            width: 320px;
-            z-index: 10;
-            pointer-events: none; /* Klicks gehen durch leere Bereiche durch */
-        }
-
-        /* Gemeinsamer Style für Panels */
-        .panel {
-            background: rgba(0, 5, 16, 0.85);
-            backdrop-filter: blur(12px);
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #083344;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            pointer-events: auto; /* Klicks aktivieren */
-        }
-
-        .main-controls {
-            max-height: 60vh;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .color-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            border: 1px solid #22d3ee55; /* Etwas hellerer Border um es hervorzuheben */
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            min-height: 24px;
-        }
-
-        .row-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .row-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            color: #94a3b8;
-            font-family: monospace;
-            margin-bottom: 4px;
-            width: 100%;
-        }
-
-        /* Label ohne width für Flexbox rows */
-        .lbl-inline {
-            font-size: 0.8rem;
-            color: #ccfbf1;
-            font-weight: bold;
-            font-family: monospace;
-            cursor: pointer;
-        }
+        body { overflow: hidden; user-select: none; }
         
-        .lbl-sub {
-             font-size: 0.7rem; 
-             color: #22d3ee;
-             cursor: pointer;
+        /* FIX: Explizite Trennung von Color und Image für zuverlässigen Verlauf */
+        main { 
+            position: relative; 
+            background-color: var(--bg-color-1); 
+            background-image: none;
+            overflow: hidden; 
+        }
+        main.has-gradient { 
+            background-image: linear-gradient(var(--bg-grad-angle), var(--bg-color-1), var(--bg-color-2)); 
         }
 
-        span.value {
-            color: #22d3ee; 
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+        #bg-layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        #bg-image-element { display: none; transform: translate(var(--bg-x), var(--bg-y)) scale(var(--bg-scale)); transform-origin: center center; max-width: none; opacity: var(--bg-opacity); mix-blend-mode: var(--bg-blend); filter: var(--bg-filter); }
+
+        #grid-container {
+            position: relative; z-index: 10; display: grid;
+            grid-template-columns: repeat(var(--col-count), var(--grid-size));
+            grid-auto-rows: var(--grid-size);
+            gap: 0px;
+            justify-content: center; align-content: center; justify-items: center; align-items: center;
+            width: auto; height: auto; pointer-events: none; 
+            opacity: 0; transition: opacity 0.8s ease-out;
         }
 
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 4px;
-            background: #1e293b;
-            border-radius: 2px;
-            outline: none;
+        #intro-layer {
+            position: absolute; inset: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+            background-color: var(--bg-color-1); 
+            transition: opacity 0.5s ease, background-color 0.5s ease;
         }
+        #intro-svg { width: 100%; height: 100%; max-width: 100%; max-height: 100%; transform-origin: 50% 50%; will-change: transform; }
+        #intro-plus-poly { fill: #ffffff; }
+        #intro-logo-rest { fill: #ffffff; transition: opacity 0.6s ease-out; }
 
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 2px; 
-            background: #22d3ee; 
-            cursor: pointer;
-            transition: transform .1s, box-shadow 0.2s;
-            box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+        #ui-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+        #brush-cursor {
+            position: absolute; left: 0; top: 0; width: var(--brush-size); height: var(--brush-size);
+            border: 1px dashed rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); border-radius: 50%;
+            transform: translate(calc(var(--brush-x) - 50%), calc(var(--brush-y) - 50%));
+            pointer-events: none; display: none; z-index: 50;
         }
+        #grad-line-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+        #drop-overlay { display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.5); border: 4px dashed #fff; z-index: 60; align-items: center; justify-content: center; font-size: 2rem; color: #fff; font-weight: bold; pointer-events: none; }
+
+        .plus-shape {
+            position: relative; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; contain: size layout style;
+            --paint-scale: 1; --anim-scale: 1; --th-multi: 1;
+            width: calc(var(--size) * var(--paint-scale));
+            height: calc(var(--size) * var(--paint-scale));
+            transform: scale(var(--anim-scale));
+            filter: blur(var(--local-blur, 0px));
+            will-change: transform, filter; 
+        }
+        .bar-h, .bar-v { position: absolute; background: var(--plus-bg); }
+        .bar-h { width: 100%; height: calc(var(--thickness) * var(--th-multi) * var(--paint-scale)); }
+        .bar-v { height: 100%; width: calc(var(--thickness) * var(--th-multi) * var(--paint-scale)); }
         
-        input[type=range]::-webkit-slider-thumb:hover {
-            box-shadow: 0 0 15px rgba(34, 211, 238, 0.8);
-        }
+        .text-alert { color: #dc2626; font-weight: 700; }
+        main.is-editing-bg { cursor: move; cursor: grab; } main.is-editing-bg:active { cursor: grabbing; }
+        main.is-editing-grad { cursor: crosshair; } main.is-painting { cursor: none; }
+        .disabled-control { opacity: 0.4; pointer-events: none; filter: grayscale(1); }
+        .tool-btn.active { background-color: #2563EB; color: white; border-color: #2563EB; }
 
-        input[type=checkbox] {
-            accent-color: #22d3ee;
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
-
-        /* Color Input Styling */
-        input[type=color] {
-            -webkit-appearance: none;
-            border: none;
-            width: 100%;
-            height: 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            background: none;
-            padding: 0;
-            overflow: hidden;
-        }
-        input[type=color]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        input[type=color]::-webkit-color-swatch {
-            border: 1px solid #334155;
-            border-radius: 4px;
-        }
-
-        button {
-            background: linear-gradient(135deg, #06b6d4, #22d3ee);
-            color: #000510;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: filter 0.2s;
-            font-family: monospace;
-            text-transform: uppercase;
-            width: 100%;
-            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
-        }
-
-        button:hover {
-            filter: brightness(1.1);
-        }
-
-        .divider {
-            height: 1px;
-            background-color: #1e293b;
-            margin: 5px 0;
-            width: 100%;
-        }
+        #sidebar { transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; will-change: width, transform; }
+        #sidebar.collapsed { width: 0 !important; min-width: 0 !important; transform: translateX(-100%); overflow: hidden; border: none; }
+        @media (min-aspect-ratio: 1/1) { #sidebar { width: 10%; min-width: 240px; } }
         
-        /* Scrollbar styling */
-        .main-controls::-webkit-scrollbar {
-            width: 6px;
-        }
-        .main-controls::-webkit-scrollbar-track {
-            background: #000510;
-        }
-        .main-controls::-webkit-scrollbar-thumb {
-            background: #1e293b;
-            border-radius: 3px;
-        }
+        #btn-toggle-menu { position: absolute; top: 10px; left: 10px; z-index: 70; background: white; padding: 6px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; transition: left 0.3s ease; }
+        #sidebar.collapsed + main #btn-toggle-menu svg { transform: rotate(180deg); }
+        #sidebar-content::-webkit-scrollbar { width: 4px; }
+        #sidebar-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
     </style>
 </head>
-<body>
+<body class="flex w-screen h-screen bg-gray-50 font-sans text-gray-800 text-xs">
 
-    <canvas id="mainCanvas"></canvas>
-
-    <div class="ui-sidebar">
-        
-        <!-- MAIN CONTROLS (Unten) -->
-        <div class="panel main-controls">
-            <!-- Rotation -->
-            <div class="control-group">
-                <label>
-                    Rotation
-                    <span id="angleVal" class="value">160°</span>
-                </label>
-                <input type="range" id="angleSlider" min="0" max="360" step="0.1" value="160">
+    <aside id="sidebar" class="w-1/5 min-w-[240px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl relative h-full">
+        <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-3">
+                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v37 GradFix</p></div>
             </div>
-
-            <!-- Sichel Breite -->
-            <div class="control-group">
-                <label>
-                    Sichel-Breite
-                    <span id="crescentVal" class="value">0.6</span>
-                </label>
-                <input type="range" id="crescentSlider" min="40" max="150" value="60">
+            <div class="flex items-center gap-2">
+                <button id="btn-random" class="text-gray-400 hover:text-blue-600 transition-colors" title="Zufallsgenerator">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </button>
+                <button id="btn-close-sidebar" class="text-gray-400 hover:text-gray-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
             </div>
+        </div>
 
-            <!-- Verlaufshärte -->
-            <div class="control-group">
-                <label>
-                    Verlaufshärte
-                    <span id="hardnessVal" class="value">50%</span>
-                </label>
-                <input type="range" id="hardnessSlider" min="0" max="100" value="50">
-            </div>
-
-            <!-- Raster Abstand -->
-            <div class="control-group">
-                <label>
-                    Raster-Abstand
-                    <span id="spacingVal" class="value">15px</span>
-                </label>
-                <input type="range" id="spacingSlider" min="10" max="60" value="15">
-            </div>
-
-             <!-- Max Größe -->
-             <div class="control-group">
-                <label>
-                    Max. Größe
-                    <span id="maxSizeVal" class="value">90%</span>
-                </label>
-                <input type="range" id="maxSizeSlider" min="10" max="300" value="90">
-            </div>
-
-            <!-- Organik / Rauschen -->
-            <div class="control-group">
-                <label>
-                    Organisches Ausfransen
-                    <span id="noiseVal" class="value">60%</span>
-                </label>
-                <input type="range" id="noiseSlider" min="0" max="100" value="60">
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Background Section -->
-            <div class="row">
-                <label class="lbl-inline">Background</label>
-            </div>
-            <div class="row">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="bgSphereCheck">
-                    <label for="bgSphereCheck" style="margin:0; font-size:0.7rem; color:#94a3b8; width:auto; cursor:pointer;">Sphere</label>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="bgInnerSphereCheck">
-                    <label for="bgInnerSphereCheck" style="margin:0; font-size:0.7rem; color:#94a3b8; width:auto; cursor:pointer;">Inner</label>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="bgRingCheck">
-                    <label for="bgRingCheck" style="margin:0; font-size:0.7rem; color:#94a3b8; width:auto; cursor:pointer;">Ring</label>
-                </div>
-            </div>
-
-            <!-- New Radius Sliders -->
-            <div class="control-group">
-                <label>
-                    Size: Sphere
-                    <span id="bgSphereSizeVal" class="value">100%</span>
-                </label>
-                <input type="range" id="bgSphereSizeSlider" min="50" max="150" value="100">
-            </div>
-            <div class="control-group">
-                <label>
-                    Size: Inner
-                    <span id="bgInnerSizeVal" class="value">90%</span>
-                </label>
-                <input type="range" id="bgInnerSizeSlider" min="10" max="120" value="90">
-            </div>
-            <div class="control-group">
-                <label>
-                    Size: Ring
-                    <span id="bgRingSizeVal" class="value">105%</span>
-                </label>
-                <input type="range" id="bgRingSizeSlider" min="50" max="150" value="105">
-            </div>
-
-
-            <div class="divider"></div>
-
-            <!-- Helligkeit Modus -->
-            <div class="row">
-                <label for="sizeModeCheck" class="lbl-inline" style="font-weight:normal; color:#94a3b8;">Größe steuert Helligkeit</label>
-                <input type="checkbox" id="sizeModeCheck">
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Connections -->
-            <div class="row">
-                <div class="row-left">
-                    <label for="connCheck" class="lbl-inline">Connections</label>
-                    <input type="checkbox" id="connCheck">
-                </div>
-                <div class="row-right">
-                    <label for="randConnCheck" class="lbl-sub">Random</label>
-                    <input type="checkbox" id="randConnCheck">
-                </div>
-            </div>
-
-            <!-- Connection Settings -->
-            <div class="control-group">
-                <label>
-                    Connection Dist (Faktor)
-                    <span id="connFactorVal" class="value">1.5x</span>
-                </label>
-                <input type="range" id="connFactorSlider" min="10" max="50" value="18">
-            </div>
+        <div id="sidebar-content" class="flex-1 px-4 py-2 overflow-y-auto space-y-3">
             
-            <div class="control-group">
-                <label>
-                    Anzahl Linien (Max)
-                    <span id="maxLinesVal" class="value">3</span>
-                </label>
-                <input type="range" id="maxLinesSlider" min="1" max="10" value="3">
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Animation Controls -->
-            <div class="row">
-                <div class="row-left">
-                     <label for="animCheck" class="lbl-inline">Animation</label>
-                     <input type="checkbox" id="animCheck">
+            <!-- 1. Basis Raster -->
+            <div class="space-y-2">
+                <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Basis Raster</h2>
+                <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                    <label id="label-size" class="text-[10px] font-medium text-gray-600">Größe</label>
+                    <input type="range" id="input-size" min="10" max="300" value="30" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    <span id="disp-size" class="text-[10px] text-gray-500 font-mono text-right">30px</span>
+                </div>
+                <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                    <label class="text-[10px] font-medium text-gray-600">Dicke</label>
+                    <input type="range" id="input-thickness" min="1" max="100" value="17.75" step="0.05" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    <span id="disp-thickness" class="text-[10px] text-gray-500 font-mono text-right">17.8%</span>
+                </div>
+                <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                    <label class="text-[10px] font-medium text-gray-600">Raster</label>
+                    <input type="range" id="input-spacing" min="20" max="250" value="100" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    <span id="disp-spacing" class="text-[10px] text-gray-500 font-mono text-right">100px</span>
                 </div>
             </div>
 
-            <div class="control-group">
-                <label>
-                    Tempo
-                    <span id="speedVal" class="value">1x</span>
-                </label>
-                <input type="range" id="speedSlider" min="1" max="50" value="10">
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- 2. Edit-Modus -->
+            <div class="space-y-2">
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="check-edit-mode" class="w-3 h-3 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="check-edit-mode" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider cursor-pointer">Edit-Modus</label>
+                </div>
+                
+                <div id="edit-mode-controls" class="space-y-2 hidden pl-2 border-l-2 border-blue-100">
+                    <div class="flex space-x-3">
+                        <div class="flex items-center space-x-1"><input type="checkbox" id="check-paint-scale" checked class="w-3 h-3 text-blue-600 rounded"><label for="check-paint-scale" class="text-[10px] cursor-pointer">Größe</label></div>
+                        <div class="flex items-center space-x-1"><input type="checkbox" id="check-paint-thickness" class="w-3 h-3 text-blue-600 rounded"><label for="check-paint-thickness" class="text-[10px] cursor-pointer">Dicke</label></div>
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Pinsel</label>
+                        <input type="range" id="input-brush-size" min="20" max="500" value="100" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        <span id="disp-brush-size" class="text-[10px] text-gray-500 font-mono text-right">100px</span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button id="btn-tool-plus" class="tool-btn active flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors">+</button>
+                        <button id="btn-tool-minus" class="tool-btn flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors">-</button>
+                        <button id="btn-tool-delete" class="tool-btn flex-1 py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors text-red-500">×</button>
+                    </div>
+                    <button id="btn-tool-clear-all" class="w-full py-1 border border-gray-200 rounded text-xs font-bold hover:bg-gray-100 transition-colors text-gray-500">Alle reduzieren</button>
+                    <div class="flex items-center space-x-1 pt-1">
+                        <input type="checkbox" id="check-influence" class="w-3 h-3 text-blue-600 rounded border-gray-300">
+                        <label for="check-influence" class="text-[10px] text-gray-500 cursor-pointer">Weicher Einfluss</label>
+                    </div>
+                </div>
             </div>
 
-            <div class="divider"></div>
+            <div class="h-px bg-gray-100"></div>
 
-            <!-- Export -->
-            <div class="row">
-                <button onclick="exportSVG()">SVG Export</button>
-                <div style="display:flex; align-items:center; gap:5px;">
-                    <input type="checkbox" id="bgExportCheck" checked>
-                    <label for="bgExportCheck" style="margin:0; font-size:0.7rem; width:auto;">Hintergrund</label>
+            <!-- 3. Tiefe -->
+            <div class="space-y-2">
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="check-depth" class="w-3 h-3 text-teal-500 rounded border-gray-300 focus:ring-teal-500">
+                    <label for="check-depth" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider cursor-pointer">Tiefe (Weichzeichner)</label>
+                </div>
+                <div id="depth-controls" class="space-y-1.5 hidden pl-2 border-l-2 border-teal-100">
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Stärke</label>
+                        <input type="range" id="input-depth-strength" min="0" max="20" value="5" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                        <span id="disp-depth-strength" class="text-[10px] text-gray-500 font-mono text-right">5</span>
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Tiefe</label>
+                        <input type="range" id="input-depth-threshold" min="1" max="3" step="0.1" value="1" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                        <span id="disp-depth-threshold" class="text-[10px] text-gray-500 font-mono text-right">1.0x</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- 4. Farbe und Verlauf -->
+            <div class="space-y-3">
+                <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Farbe & Verlauf</h2>
+                
+                <!-- Hintergrund -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold text-gray-600">Grundfarbe Hintergrund</label>
+                        <span id="val-hex-bg1" class="text-[9px] font-mono text-gray-400">#0000FF</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="input-color-1" value="#0000FF" class="w-6 h-6 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
+                        <div class="flex-1"></div>
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="check-gradient" class="w-3 h-3 text-purple-600 rounded border-gray-300">
+                            <label for="check-gradient" class="text-[10px] text-gray-500 cursor-pointer">Verlauf</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Verlauf Controls -->
+                    <div id="bg-grad-controls" class="hidden pl-2 space-y-1.5 mt-1 border-l-2 border-purple-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500">Nach:</span>
+                            <input type="color" id="input-color-2" value="#000000" class="w-5 h-5 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
+                            <span id="val-hex-bg2" class="text-[9px] font-mono text-gray-400">#000000</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <input type="checkbox" id="check-grad-edit" class="w-3 h-3 text-purple-600 rounded border-gray-300">
+                            <label for="check-grad-edit" class="text-[9px] text-gray-500 cursor-pointer">Richtung ändern</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-px bg-gray-50 border-t border-dashed border-gray-200"></div>
+
+                <!-- Plus -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold text-gray-600">Grundfarbe Plus</label>
+                        <span id="val-hex-plus1" class="text-[9px] font-mono text-gray-400">#ffffff</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="input-plus-col-1" value="#ffffff" class="w-6 h-6 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
+                        <div class="flex-1"></div>
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="check-plus-gradient" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
+                            <label for="check-plus-gradient" class="text-[10px] text-gray-500 cursor-pointer">Verlauf</label>
+                        </div>
+                    </div>
+
+                    <!-- Plus Verlauf Controls -->
+                    <div id="plus-grad-controls" class="hidden pl-2 space-y-1.5 mt-1 border-l-2 border-indigo-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500">Nach:</span>
+                            <input type="color" id="input-plus-col-2" value="#00d4ff" class="w-5 h-5 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
+                            <span id="val-hex-plus2" class="text-[9px] font-mono text-gray-400">#00d4ff</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <input type="checkbox" id="check-plus-grad-edit" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
+                            <label for="check-plus-grad-edit" class="text-[9px] text-gray-500 cursor-pointer">Richtung ändern</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- 5. Hintergrundbild -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Hintergrundbild</h2>
+                    <div class="flex items-center space-x-1">
+                        <input type="checkbox" id="check-bg-edit" disabled class="w-3 h-3 text-blue-600 rounded border-gray-300 disabled:opacity-50">
+                        <label id="label-bg-edit" for="check-bg-edit" class="text-[10px] text-gray-500 cursor-pointer opacity-50">Edit</label>
+                    </div>
+                </div>
+                
+                <div id="bg-controls" class="space-y-1.5 opacity-50 pointer-events-none transition-opacity">
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Zoom</label>
+                        <input type="range" id="input-bg-scale" min="0.1" max="5" step="0.1" value="1" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+                        <span id="disp-bg-scale" class="text-[10px] text-gray-500 font-mono text-right">1.0x</span>
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Opazität</label>
+                        <input type="range" id="input-bg-opacity" min="0" max="100" value="100" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-600">
+                        <span id="disp-bg-opacity" class="text-[10px] text-gray-500 font-mono text-right">100%</span>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <div class="flex items-center space-x-1">
+                            <input type="checkbox" id="check-bg-mono" class="w-3 h-3 text-gray-600 rounded border-gray-300 focus:ring-gray-500">
+                            <label for="check-bg-mono" class="text-[10px] text-gray-500 cursor-pointer">Monochrom</label>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <input type="checkbox" id="check-bg-multiply" class="w-3 h-3 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
+                            <label for="check-bg-multiply" class="text-[10px] text-gray-500 cursor-pointer">Multiplizieren</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-gray-100"></div>
+
+            <!-- 6. Animation -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="check-animation" class="w-3 h-3 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
+                        <label for="check-animation" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider cursor-pointer">Animation</label>
+                    </div>
+                </div>
+                <div id="anim-controls" class="space-y-1.5 hidden pl-2 border-l-2 border-orange-100">
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Intensität</label>
+                        <input type="range" id="input-anim-intensity" min="0" max="100" value="50" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                        <span id="disp-anim-intensity" class="text-[10px] text-gray-500 font-mono text-right">50%</span>
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Zufall</label>
+                        <input type="range" id="input-anim-random" min="0" max="100" value="20" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                        <span id="disp-anim-random" class="text-[10px] text-gray-500 font-mono text-right">20%</span>
+                    </div>
+                    <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Tempo</label>
+                        <input type="range" id="input-anim-speed" min="1" max="50" value="15" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                        <span id="disp-anim-speed" class="text-[10px] text-gray-500 font-mono text-right">1.5x</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- COLOR PANEL -->
-        <div class="panel color-panel">
-            <div class="row">
-                <div class="row-left">
-                    <label for="multiColorCheck" class="lbl-inline">Colors</label>
-                    <input type="checkbox" id="multiColorCheck">
+        <div class="p-3 border-t border-gray-200 bg-gray-50 shrink-0 space-y-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <select id="input-export-format" class="text-[10px] border-gray-300 rounded bg-white text-gray-600 py-0.5 pl-1 pr-4 h-6 border focus:ring-0 focus:border-blue-500 cursor-pointer">
+                        <option value="svg">SVG (Vektor)</option>
+                        <option value="png">PNG (Raster + Blur)</option>
+                    </select>
                 </div>
-                <div class="row-right">
-                     <label for="cloudsColorCheck" class="lbl-sub">Clouds</label>
-                     <input type="checkbox" id="cloudsColorCheck">
-
-                     <label for="randColorCheck" class="lbl-sub">Random</label>
-                     <input type="checkbox" id="randColorCheck">
+                <div class="flex items-center space-x-1">
+                    <input type="checkbox" id="check-export-bg" checked class="w-3 h-3 text-blue-600 rounded border-gray-300">
+                    <label for="check-export-bg" class="text-[10px] text-gray-500 cursor-pointer">Mit BG</label>
                 </div>
             </div>
-
-            <div class="row" style="gap:5px;">
-                <input type="color" id="color1" value="#00c167" title="Color 1">
-                <input type="color" id="color2" value="#008cff" title="Color 2">
-                <input type="color" id="color3" value="#ffa6b4" title="Color 3">
-                <input type="color" id="color4" value="#822faa" title="Color 4">
+            <div class="flex justify-between items-center">
+                 <span class="text-[9px] text-gray-400" id="stat-items">0 Items</span>
+                 <button id="btn-export" class="flex-1 ml-2 py-1.5 px-4 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded shadow transition-colors">Export</button>
             </div>
         </div>
+    </aside>
 
-    </div>
+    <main id="main-area" class="flex-1 flex items-center justify-center relative">
+        <div id="intro-layer">
+            <svg id="intro-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1920 1080">
+                <g id="intro-group">
+                    <path id="intro-logo-rest" d="M1474.62,414.34c-45.54-87.33-136.83-147.09-242.17-147.09h-321.39v96.71h321.38c48,0,91.48,19.25,123.27,50.38,32.64,31.96,52.96,76.43,52.96,125.66,0,57.09-27.37,107.72-69.58,139.89-29.63,22.58-66.52,36.15-106.64,36.15h-544.88c-39.28,0-75.45-13.02-104.76-34.75-43.28-32.09-71.46-83.35-71.46-141.29,0-97.17,78.94-176.04,176.22-176.04h112.05v-96.71h-112.05c-150.75,0-273.06,122.17-273.06,272.75,0,51.49,14.99,99.85,40.48,141.29,48.14,78.28,134.41,131.47,232.58,131.47h544.89c98.92,0,185.76-53.61,233.68-132.87,24.81-41.04,39.38-88.83,39.38-139.89,0-45.35-11.26-88.03-30.88-125.66Z" fill="#ffffff"/>
+                    <polygon id="intro-plus-poly" points="1008.42 679.88 1008.42 588.36 1232.73 588.36 1232.73 491.64 1008.42 491.64 1008.42 414.34 1008.42 363.96 1008.42 267.25 911.59 267.25 911.59 491.64 687.33 491.64 687.33 588.36 911.59 588.36 911.59 716.04 911.34 716.04 911.34 812.75 1008.42 812.75 1008.42 716.04 1008.42 679.88" fill="#ffffff"/>
+                </g>
+            </svg>
+        </div>
+
+        <button id="btn-toggle-menu" class="bg-white p-1.5 rounded shadow-sm hover:bg-gray-50 text-gray-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+        <div id="drop-overlay">Bild hier ablegen</div>
+        <div id="bg-layer"><img id="bg-image-element" src="" alt="Background"></div>
+        <div id="grid-container"></div>
+        <div id="ui-layer">
+            <svg id="grad-line-svg"><line id="grad-line-visual" x1="0" y1="0" x2="0" y2="0" stroke="white" stroke-width="2" stroke-dasharray="4" /><circle id="grad-start-point" cx="0" cy="0" r="4" fill="white" /><circle id="grad-end-point" cx="0" cy="0" r="4" fill="white" /></svg>
+            <div id="brush-cursor"></div>
+        </div>
+    </main>
 
     <script>
-        const canvas = document.getElementById('mainCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // UI Elemente
-        const els = {
-            anim: document.getElementById('animCheck'),
-            speed: { input: document.getElementById('speedSlider'), display: document.getElementById('speedVal') },
-            angle: { input: document.getElementById('angleSlider'), display: document.getElementById('angleVal') },
-            crescent: { input: document.getElementById('crescentSlider'), display: document.getElementById('crescentVal') },
-            hardness: { input: document.getElementById('hardnessSlider'), display: document.getElementById('hardnessVal') },
-            spacing: { input: document.getElementById('spacingSlider'), display: document.getElementById('spacingVal') },
-            maxSize: { input: document.getElementById('maxSizeSlider'), display: document.getElementById('maxSizeVal') },
-            noise: { input: document.getElementById('noiseSlider'), display: document.getElementById('noiseVal') },
-            sizeMode: document.getElementById('sizeModeCheck'),
-            // Connection
-            conn: document.getElementById('connCheck'),
-            connRandom: document.getElementById('randConnCheck'),
-            connFactor: { input: document.getElementById('connFactorSlider'), display: document.getElementById('connFactorVal') },
-            maxLines: { input: document.getElementById('maxLinesSlider'), display: document.getElementById('maxLinesVal') },
-            bgExport: document.getElementById('bgExportCheck'),
-            // Background Sphere/Ring
-            bgSphere: document.getElementById('bgSphereCheck'),
-            bgInnerSphere: document.getElementById('bgInnerSphereCheck'),
-            bgRing: document.getElementById('bgRingCheck'),
-            // New Radius Sliders
-            bgSphereSize: { input: document.getElementById('bgSphereSizeSlider'), display: document.getElementById('bgSphereSizeVal') },
-            bgInnerSize: { input: document.getElementById('bgInnerSizeSlider'), display: document.getElementById('bgInnerSizeVal') },
-            bgRingSize: { input: document.getElementById('bgRingSizeSlider'), display: document.getElementById('bgRingSizeVal') },
-
-            // Color Elements
-            multiColor: document.getElementById('multiColorCheck'),
-            randColor: document.getElementById('randColorCheck'),
-            cloudsColor: document.getElementById('cloudsColorCheck'),
-            colors: [
-                document.getElementById('color1'),
-                document.getElementById('color2'),
-                document.getElementById('color3'),
-                document.getElementById('color4')
-            ]
+        const state = {
+            size: 30, thicknessPercent: 17.75, spacing: 100,
+            animation: { active: false, intensity: 0.5, randomness: 0.2, speed: 1.5, startTime: 0 },
+            depth: { active: false, strength: 5, threshold: 1.0 },
+            plusColor: { active: false, gradient: false, col1: '#ffffff', col2: '#00d4ff' },
+            plusGradientAngle: 45, isEditingPlusGrad: false,
+            isPaintMode: false, brushSize: 100, activeTool: 'plus', useInfluence: false,
+            modifiedCells: new Map(), isPainting: false, paintTargetScale: true, paintTargetThickness: false,
+            bgColor1: '#0000FF', bgColor2: '#000000', hasGradient: false, gradientAngle: 225, 
+            bgImageSrc: null, bgX: 0, bgY: 0, bgScale: 1, bgMultiply: false, bgOpacity: 100, bgMono: false, 
+            isEditingBg: false, isEditingGrad: false, isDragging: false, startX: 0, startY: 0, lastMouseX: 0, lastMouseY: 0, mouseX: 0, mouseY: 0 
         };
 
-        let width, height, minDim;
-        const dpr = window.devicePixelRatio || 1;
-        let animationFrameId;
+        let gridCache = [];
 
-        function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            minDim = Math.min(width, height);
+        const ui = {
+            root: document.documentElement, mainArea: document.getElementById('main-area'), dropOverlay: document.getElementById('drop-overlay'), gridContainer: document.getElementById('grid-container'),
+            sidebar: document.getElementById('sidebar'), btnToggleMenu: document.getElementById('btn-toggle-menu'), btnCloseSidebar: document.getElementById('btn-close-sidebar'), btnRandom: document.getElementById('btn-random'),
+            introLayer: document.getElementById('intro-layer'), introSvg: document.getElementById('intro-svg'), introRestPath: document.getElementById('intro-logo-rest'),
+            checkAnimation: document.getElementById('check-animation'), animControls: document.getElementById('anim-controls'),
+            inputAnimIntensity: document.getElementById('input-anim-intensity'), inputAnimRandom: document.getElementById('input-anim-random'), inputAnimSpeed: document.getElementById('input-anim-speed'),
+            checkDepth: document.getElementById('check-depth'), depthControls: document.getElementById('depth-controls'), 
+            inputDepthStrength: document.getElementById('input-depth-strength'), inputDepthThreshold: document.getElementById('input-depth-threshold'),
+            checkEditMode: document.getElementById('check-edit-mode'), editModeControls: document.getElementById('edit-mode-controls'),
+            checkPaintScale: document.getElementById('check-paint-scale'), checkPaintThickness: document.getElementById('check-paint-thickness'),
+            inputBrushSize: document.getElementById('input-brush-size'),
+            btnToolPlus: document.getElementById('btn-tool-plus'), btnToolMinus: document.getElementById('btn-tool-minus'), btnToolDelete: document.getElementById('btn-tool-delete'), btnToolClearAll: document.getElementById('btn-tool-clear-all'),
+            checkInfluence: document.getElementById('check-influence'), brushCursor: document.getElementById('brush-cursor'),
+            inputSize: document.getElementById('input-size'), inputThickness: document.getElementById('input-thickness'), inputSpacing: document.getElementById('input-spacing'),
+            inputColor1: document.getElementById('input-color-1'), inputColor2: document.getElementById('input-color-2'), 
+            color2Container: document.getElementById('color-2-container'), gradientEditContainer: document.getElementById('gradient-edit-container'), bgGradControls: document.getElementById('bg-grad-controls'),
+            checkGradient: document.getElementById('check-gradient'), checkGradEdit: document.getElementById('check-grad-edit'),
+            checkPlusColor: document.getElementById('check-plus-color'), plusColorControls: document.getElementById('plus-color-controls'),
+            inputPlusCol1: document.getElementById('input-plus-col-1'), inputPlusCol2: document.getElementById('input-plus-col-2'),
+            plusCol2Container: document.getElementById('plus-col-2-container'), checkPlusGradient: document.getElementById('check-plus-gradient'),
+            plusGradControls: document.getElementById('plus-grad-controls'), checkPlusGradEdit: document.getElementById('check-plus-grad-edit'),
+            gradLineSvg: document.getElementById('grad-line-svg'), gradLineVisual: document.getElementById('grad-line-visual'), gradStartPoint: document.getElementById('grad-start-point'), gradEndPoint: document.getElementById('grad-end-point'),
+            checkBgEdit: document.getElementById('check-bg-edit'), labelBgEdit: document.getElementById('label-bg-edit'), bgControls: document.getElementById('bg-controls'),
+            inputBgScale: document.getElementById('input-bg-scale'), checkBgMultiply: document.getElementById('check-bg-multiply'), checkBgMono: document.getElementById('check-bg-mono'), inputBgOpacity: document.getElementById('input-bg-opacity'), bgImageElement: document.getElementById('bg-image-element'),
+            checkExportBg: document.getElementById('check-export-bg'), btnExport: document.getElementById('btn-export'), inputExportFormat: document.getElementById('input-export-format'),
+            valSize: document.getElementById('val-size'), valThicknessPercent: document.getElementById('val-thickness-percent'), valSpacing: document.getElementById('val-spacing'), statItems: document.getElementById('stat-items'),
+            labelSize: document.getElementById('label-size'),
+            dispSize: document.getElementById('disp-size'), dispThickness: document.getElementById('disp-thickness'), dispSpacing: document.getElementById('disp-spacing'),
+            dispDepthStrength: document.getElementById('disp-depth-strength'), dispDepthThreshold: document.getElementById('disp-depth-threshold'),
+            dispAnimIntensity: document.getElementById('disp-anim-intensity'), dispAnimRandom: document.getElementById('disp-anim-random'), dispAnimSpeed: document.getElementById('disp-anim-speed'),
+            dispBgScale: document.getElementById('disp-bg-scale'), dispBgOpacity: document.getElementById('disp-bg-opacity'), dispBrushSize: document.getElementById('disp-brush-size'),
+            valHexBg1: document.getElementById('val-hex-bg1'), valHexBg2: document.getElementById('val-hex-bg2'),
+            valHexPlus1: document.getElementById('val-hex-plus1'), valHexPlus2: document.getElementById('val-hex-plus2'),
+        };
+
+        function simpleHash(x, y) { return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123 - Math.floor(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123); }
+
+        function animationLoop() {
+            if (!state.animation.active) return;
+            const t = (performance.now() * 0.001 * state.animation.speed);
+            const intensity = state.animation.intensity;
+            const randomness = state.animation.randomness;
+            const len = gridCache.length;
+            for (let i = 0; i < len; i++) {
+                const item = gridCache[i];
+                const lx = item.x; const ly = item.y;
+                let baseScale = item.paintScale;
+                const w1 = Math.sin(lx * 0.15 + ly * 0.15 + t);
+                const w2 = Math.cos(lx * 0.08 - t * 0.5);
+                const w3 = Math.sin(ly * 0.3 + t * 1.5);
+                const noise = simpleHash(lx, ly) * 2 - 1; 
+                const localTime = t + (noise * randomness * 5.0);
+                const breathe = (Math.sin(localTime) + Math.sin(localTime * 0.5 + lx*0.1)) / 2; 
+                const delta = breathe * intensity * 8.0; 
+                let animatedScaleFactor = (1 + delta);
+                if (animatedScaleFactor < 0) animatedScaleFactor = 0;
+                item.el.style.setProperty('--anim-scale', animatedScaleFactor.toFixed(3));
+                if (state.depth.active) {
+                    const totalScale = baseScale * animatedScaleFactor;
+                    let blurPx = 0;
+                    if (totalScale > state.depth.threshold) {
+                        blurPx = (totalScale - state.depth.threshold) * state.depth.strength;
+                    }
+                    item.el.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
+                }
+            }
+            requestAnimationFrame(animationLoop);
+        }
+
+        function calculateIntroScale() {
+            const svgPlusHeight = 545.5; 
+            const winW = window.innerWidth; const winH = window.innerHeight;
+            const svgW = 1920; const svgH = 1080;
+            const scaleX = winW / svgW; const scaleY = winH / svgH;
+            const fitScale = Math.min(scaleX, scaleY);
+            const renderedPlusHeight = svgPlusHeight * fitScale;
+            return state.size / renderedPlusHeight;
+        }
+
+        window.addEventListener('load', () => {
+            ui.introLayer.style.opacity = 1;
+            setTimeout(() => {
+                const targetScale = calculateIntroScale();
+                ui.introSvg.style.transition = "transform 1.2s cubic-bezier(0.8, 0, 0.2, 1)";
+                ui.introSvg.style.transform = `scale(${targetScale})`;
+                setTimeout(() => { if(ui.introRestPath) ui.introRestPath.style.opacity = 0; }, 200);
+                setTimeout(() => { ui.gridContainer.style.opacity = 1; }, 1200); 
+                setTimeout(() => { ui.introLayer.style.backgroundColor = "transparent"; }, 1000);
+                setTimeout(() => { ui.introLayer.style.opacity = 0; setTimeout(() => { ui.introLayer.style.display = 'none'; }, 500); }, 1400);
+            }, 500);
+        });
+
+        function updateVisuals() {
+            const absoluteThickness = (state.size * state.thicknessPercent) / 100;
+            const activeGridSize = Math.max(state.spacing, state.size);
+            const isGridExpanded = state.size > state.spacing;
+
+            ui.root.style.setProperty('--size', `${state.size}px`);
+            ui.root.style.setProperty('--thickness', `${absoluteThickness}px`);
+            ui.root.style.setProperty('--grid-size', `${activeGridSize}px`);
+            ui.root.style.setProperty('--bg-color-1', state.bgColor1);
+            ui.root.style.setProperty('--bg-color-2', state.bgColor2);
+            ui.root.style.setProperty('--bg-grad-angle', `${state.gradientAngle}deg`);
+            ui.root.style.setProperty('--bg-blend', state.bgMultiply ? 'multiply' : 'normal');
+            ui.root.style.setProperty('--bg-opacity', state.bgOpacity / 100);
+            ui.root.style.setProperty('--bg-filter', state.bgMono ? 'grayscale(100%)' : 'none'); 
+            ui.root.style.setProperty('--brush-size', `${state.brushSize}px`);
             
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            
-            ctx.scale(dpr, dpr);
-            if (!els.anim.checked) render();
-        }
-
-        function pseudoRandom(x, y) {
-            return Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
-        }
-
-        function cloudNoise(x, y) {
-            const scale = 0.003;
-            const v1 = Math.sin(x * scale + y * scale * 0.5);
-            const v2 = Math.cos(x * scale * 0.5 - y * scale);
-            const v3 = Math.sin(x * scale * 0.2 + y * scale * 0.2 + 2);
-            const val = (v1 + v2 + v3) / 3; 
-            return val * 0.5 + 0.5;
-        }
-
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? [
-                parseInt(result[1], 16),
-                parseInt(result[2], 16),
-                parseInt(result[3], 16)
-            ] : [0, 212, 255];
-        }
-
-        function getGradientColor(t, colors) {
-            t = Math.max(0, Math.min(1, t));
-            let c1, c2, localT;
-            if (t < 0.33) {
-                c1 = colors[0]; c2 = colors[1];
-                localT = t / 0.33;
-            } else if (t < 0.66) {
-                c1 = colors[1]; c2 = colors[2];
-                localT = (t - 0.33) / 0.33;
+            if (state.plusColor.gradient) {
+                ui.root.style.setProperty('--plus-bg', `linear-gradient(${state.plusGradientAngle}deg, ${state.plusColor.col1}, ${state.plusColor.col2})`);
             } else {
-                c1 = colors[2]; c2 = colors[3];
-                localT = (t - 0.66) / 0.34;
+                ui.root.style.setProperty('--plus-bg', state.plusColor.col1);
             }
-            const r = Math.round(c1[0] + (c2[0] - c1[0]) * localT);
-            const g = Math.round(c1[1] + (c2[1] - c1[1]) * localT);
-            const b = Math.round(c1[2] + (c2[2] - c1[2]) * localT);
-            return [r, g, b];
-        }
 
-        // Neue Standardfarbe #00d4ff (RGB: 0, 212, 255)
-        const COLOR_STD_RGB = [0, 212, 255]; 
-        const COLOR_STD_HEX = "#00d4ff";
-
-        function getPlusPathData(x, y, scale, spacing, maxSizeFactor) {
-            const maxSize = spacing * maxSizeFactor; 
-            const size = maxSize * scale;
-            const s = size / 2;
-            const t = Math.max(0.5, size * 0.15); 
-            return `M ${x-t} ${y-s} L ${x+t} ${y-s} L ${x+t} ${y-t} L ${x+s} ${y-t} L ${x+s} ${y+t} L ${x+t} ${y+t} L ${x+t} ${y+s} L ${x-t} ${y+s} L ${x-t} ${y+t} L ${x-s} ${y+t} L ${x-s} ${y-t} L ${x-t} ${y-t} Z`; 
-        }
-
-        function drawSinglePathPlus(x, y, scale, spacing, sizeMode, maxSizeFactor, colorRgb) {
-            ctx.beginPath();
-            let drawScale = scale;
-            let alpha = scale;
-            if (sizeMode) {
-                alpha = 1.0;
-                drawScale = Math.pow(scale, 1.5); 
-            }
-            ctx.fillStyle = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, ${alpha})`;
-            const maxSize = spacing * maxSizeFactor; 
-            const size = maxSize * drawScale;
-            const s = size / 2;
-            const t = Math.max(0.5, size * 0.15); 
-            ctx.moveTo(x - t, y - s); 
-            ctx.lineTo(x + t, y - s); 
-            ctx.lineTo(x + t, y - t); 
-            ctx.lineTo(x + s, y - t); 
-            ctx.lineTo(x + s, y + t); 
-            ctx.lineTo(x + t, y + t); 
-            ctx.lineTo(x + t, y + s); 
-            ctx.lineTo(x - t, y + s); 
-            ctx.lineTo(x - t, y + t); 
-            ctx.lineTo(x - s, y + t); 
-            ctx.lineTo(x - s, y - t); 
-            ctx.lineTo(x - t, y - t); 
-            ctx.closePath();
-            ctx.fill();
-        }
-
-        function getRenderData() {
-            const angleDeg = parseFloat(els.angle.input.value);
-            const crescentFactor = parseInt(els.crescent.input.value) / 100; 
-            const spacing = parseInt(els.spacing.input.value);
-            const noiseFactor = parseInt(els.noise.input.value) / 100;
-            const hardnessFactor = parseInt(els.hardness.input.value) / 100; 
-            const maxSizeFactor = parseInt(els.maxSize.input.value) / 100; 
-            const sizeMode = els.sizeMode.checked;
+            // UI Toggles
+            if (state.hasGradient) { ui.bgGradControls.classList.remove('hidden'); } else { ui.bgGradControls.classList.add('hidden'); }
             
-            // Connections Config
-            const showConn = els.conn.checked;
-            const randomConn = els.connRandom.checked;
-            const connFactor = parseInt(els.connFactor.input.value) / 10; 
-            const maxLines = parseInt(els.maxLines.input.value);
-            const connDist = spacing * connFactor; 
+            if (state.plusColor.gradient) { ui.plusGradControls.classList.remove('hidden'); } else { ui.plusGradControls.classList.add('hidden'); }
 
-            // Color Config
-            const isMultiColor = els.multiColor.checked;
-            const isRandomColor = els.randColor.checked;
-            const isCloudsColor = els.cloudsColor.checked;
-            const activeColors = els.colors.map(el => hexToRgb(el.value));
+            if(ui.valSize) ui.valSize.innerText = `${state.size}px`;
+            if(ui.valThicknessPercent) ui.valThicknessPercent.innerText = `${state.thicknessPercent}%`;
+            if(ui.valSpacing) ui.valSpacing.innerText = `${state.spacing}px`;
+            if(ui.valHexBg1) ui.valHexBg1.innerText = state.bgColor1.toUpperCase();
+            if(ui.valHexBg2) ui.valHexBg2.innerText = state.bgColor2.toUpperCase();
+            if(ui.valHexPlus1) ui.valHexPlus1.innerText = state.plusColor.col1.toUpperCase();
+            if(ui.valHexPlus2) ui.valHexPlus2.innerText = state.plusColor.col2.toUpperCase();
 
-            // Background Config
-            const showSphere = els.bgSphere.checked;
-            const showInnerSphere = els.bgInnerSphere.checked;
-            const showRing = els.bgRing.checked;
+            if (isGridExpanded && ui.labelSize) ui.labelSize.classList.add('text-alert'); 
+            else if (ui.labelSize) ui.labelSize.classList.remove('text-alert');
 
-            // Größen Faktoren
-            const sphereScale = parseInt(els.bgSphereSize.input.value) / 100;
-            const innerSphereScale = parseInt(els.bgInnerSize.input.value) / 100;
-            const ringScale = parseInt(els.bgRingSize.input.value) / 100;
-
-
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const moonRadius = minDim * 0.35; 
-            
-            // Berechnete Radien für die Elemente
-            const sphereRadius = moonRadius * sphereScale;
-            const innerSphereRadius = moonRadius * innerSphereScale;
-            const ringRadius = moonRadius * ringScale;
-
-            
-            const shadowOffset = moonRadius * crescentFactor; 
-            const blurFactor = 1.5 - (hardnessFactor * 1.4); 
-            const blurSize = moonRadius * blurFactor;
-
-            const angleRad = (angleDeg * Math.PI) / 180;
-            const shadowX = centerX - Math.cos(angleRad) * shadowOffset;
-            const shadowY = centerY - Math.sin(angleRad) * shadowOffset;
-
-            // Für die Sphere Light Position (rotiert mit)
-            const lightVecX = Math.cos(angleRad);
-            const lightVecY = Math.sin(angleRad);
-
-            const scanRadius = moonRadius + spacing + blurSize/2;
-            const startCol = Math.floor((centerX - scanRadius) / spacing);
-            const endCol = Math.ceil((centerX + scanRadius) / spacing);
-            const startRow = Math.floor((centerY - scanRadius) / spacing);
-            const endRow = Math.ceil((centerY + scanRadius) / spacing);
-
-            let points = [];
-
-            for (let i = startCol; i <= endCol; i++) {
-                for (let j = startRow; j <= endRow; j++) {
-                    const x = i * spacing;
-                    const y = j * spacing;
-
-                    const distToCenter = Math.hypot(x - centerX, y - centerY);
-                    if (distToCenter > moonRadius) continue;
-
-                    const distToShadow = Math.hypot(x - shadowX, y - shadowY);
-
-                    let intensity = (distToShadow - (moonRadius - blurSize * 0.5)) / blurSize;
-                    intensity = Math.max(0, Math.min(1, intensity));
-
-                    if (intensity < 0.95) {
-                        const rand = pseudoRandom(i, j);
-                        const noiseMod = 1.0 - (hardnessFactor * 0.5); 
-                        const dropoutThreshold = (1 - intensity) * noiseFactor * 2.0 * noiseMod;
-                        if (rand < dropoutThreshold) continue;
-                        if (noiseFactor > 0) intensity *= (1 - (rand * noiseFactor * 0.3));
-                    }
-
-                    if (intensity > 0.05) {
-                        let ptColor = COLOR_STD_RGB;
-                        if (isMultiColor) {
-                            if (isRandomColor) {
-                                const randVal = pseudoRandom(i * 13, j * 7);
-                                const index = Math.floor(randVal * 4);
-                                ptColor = activeColors[index];
-                            } else if (isCloudsColor) {
-                                const t = cloudNoise(x, y);
-                                ptColor = getGradientColor(t, activeColors);
-                            } else {
-                                let t = x / width;
-                                ptColor = getGradientColor(t, activeColors);
-                            }
-                        }
-                        points.push({x, y, intensity, spacing, color: ptColor});
+            if (!state.animation.active) {
+                const len = gridCache.length;
+                for(let i=0; i<len; i++) {
+                    gridCache[i].el.style.setProperty('--anim-scale', 1);
+                    if (state.depth.active) {
+                        const s = gridCache[i].paintScale;
+                        let blurPx = (s > state.depth.threshold) ? (s - state.depth.threshold) * state.depth.strength : 0;
+                        gridCache[i].el.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
+                    } else {
+                        gridCache[i].el.style.setProperty('--local-blur', `0px`);
                     }
                 }
             }
-            return { 
-                points, sizeMode, width, height, maxSizeFactor, showConn, connDist, randomConn, maxLines, 
-                showSphere, showInnerSphere, showRing, moonRadius, centerX, centerY, lightVecX, lightVecY, angleRad,
-                sphereRadius, innerSphereRadius, ringRadius
-            };
+            recalcGridGeometry();
         }
 
-        function calculateConnections(data) {
-            const lines = [];
-            const maxDist = data.connDist;
-            
-            for (let i = 0; i < data.points.length; i++) {
-                const p1 = data.points[i];
-                let candidates = [];
-                for (let j = i + 1; j < data.points.length; j++) {
-                    const p2 = data.points[j];
-                    const dx = p2.x - p1.x;
-                    if (dx > maxDist) break;
-                    const dy = Math.abs(p2.y - p1.y);
-                    if (dy > maxDist) continue;
-                    const dist = Math.hypot(dx, dy);
-                    if (dist <= maxDist) candidates.push({ point: p2, dist: dist });
-                }
-                if (candidates.length === 0) continue;
-                if (data.randomConn) {
-                    candidates.sort((a, b) => {
-                        const rA = pseudoRandom(p1.x + a.point.x, p1.y + a.point.y);
-                        const rB = pseudoRandom(p1.x + b.point.x, p1.y + b.point.y);
-                        return rA - rB;
-                    });
+        function updateCellVisual(item, data) {
+            item.el.style.setProperty('--paint-scale', data.scale.toFixed(3));
+            item.el.style.setProperty('--th-multi', data.thMulti);
+            item.paintScale = data.scale;
+            if (!state.animation.active) {
+                if (state.depth.active && data.scale > state.depth.threshold) {
+                    let blurPx = (data.scale - state.depth.threshold) * state.depth.strength;
+                    item.el.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
                 } else {
-                    candidates.sort((a, b) => a.dist - b.dist);
-                }
-                const count = Math.min(candidates.length, data.maxLines);
-                for(let k=0; k < count; k++) {
-                    lines.push({
-                        p1: p1,
-                        p2: candidates[k].point,
-                        opacity: (1 - candidates[k].dist / maxDist) * 0.4
-                    });
+                    item.el.style.setProperty('--local-blur', `0px`);
                 }
             }
-            return lines;
         }
+        
+        function updatePaintLoop() { if (state.isPaintMode && state.isPainting) { applyBrush(state.mouseX, state.mouseY); requestAnimationFrame(updatePaintLoop); } }
+        
+        function applyBrush(mx, my) {
+            const activeGridSize = Math.max(state.spacing, state.size);
+            const gridRect = ui.gridContainer.getBoundingClientRect();
+            const localMx = mx - gridRect.left; const localMy = my - gridRect.top;
+            const radius = state.brushSize / 2; const radiusSq = radius * radius;
+            const growthRate = 0.05; 
 
-        function drawSphere(ctx, x, y, radius, lightVecX, lightVecY) {
-            // Linearer Verlauf basierend auf Licht
-            const r = radius;
-            const startX = x + lightVecX * r;
-            const startY = y + lightVecY * r;
-            const endX = x - lightVecX * r;
-            const endY = y - lightVecY * r;
-
-            const grad = ctx.createLinearGradient(startX, startY, endX, endY);
-            // Nutze Standard-Farbvariablen für Konsistenz mit Export
-            grad.addColorStop(0, `rgba(${COLOR_STD_RGB.join(',')}, 0.2)`);
-            grad.addColorStop(1, `rgba(${COLOR_STD_RGB.join(',')}, 0.0)`);
-
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fillStyle = grad;
-            ctx.fill();
-        }
-
-        function render() {
-            // UI Updates
-            const angleVal = parseFloat(els.angle.input.value).toFixed(0);
-            els.angle.display.innerText = angleVal + "°";
-            els.crescent.display.innerText = (parseInt(els.crescent.input.value) / 100).toFixed(1);
-            els.hardness.display.innerText = els.hardness.input.value + "%";
-            els.spacing.display.innerText = els.spacing.input.value + "px";
-            els.maxSize.display.innerText = els.maxSize.input.value + "%";
-            els.noise.display.innerText = els.noise.input.value + "%";
-            els.maxLines.display.innerText = els.maxLines.input.value;
-            const connFact = parseInt(els.connFactor.input.value) / 10;
-            els.connFactor.display.innerText = connFact.toFixed(1) + "x";
-            const speed = parseInt(els.speed.input.value);
-            els.speed.display.innerText = (speed / 10).toFixed(1) + "x";
-
-            // Neue Slider Display Values
-            els.bgSphereSize.display.innerText = els.bgSphereSize.input.value + "%";
-            els.bgInnerSize.display.innerText = els.bgInnerSize.input.value + "%";
-            els.bgRingSize.display.innerText = els.bgRingSize.input.value + "%";
-
-
-            ctx.clearRect(0, 0, width, height);
-            const data = getRenderData();
-            
-            // 0. Draw Background Sphere
-            if (data.showSphere) {
-                drawSphere(ctx, data.centerX, data.centerY, data.sphereRadius, data.lightVecX, data.lightVecY);
-            }
-            
-            // 0.5 Draw Inner Sphere
-            if (data.showInnerSphere) {
-                drawSphere(ctx, data.centerX, data.centerY, data.innerSphereRadius, data.lightVecX, data.lightVecY);
-            }
-            
-            // 1. Draw Connections
-            if (data.showConn) {
-                const lines = calculateConnections(data);
-                ctx.lineWidth = 0.5;
-                lines.forEach(line => {
-                    ctx.beginPath();
-                    const c = line.p1.color;
-                    ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${line.opacity})`;
-                    ctx.moveTo(line.p1.x, line.p1.y);
-                    ctx.lineTo(line.p2.x, line.p2.y);
-                    ctx.stroke();
-                });
-            }
-
-            // 2. Draw Symbols
-            data.points.forEach(p => {
-                drawSinglePathPlus(p.x, p.y, p.intensity, p.spacing, data.sizeMode, data.maxSizeFactor, p.color);
-            });
-
-            // 3. Draw Background Ring (Verschoben nach hinten, damit er vorne liegt)
-            if (data.showRing) {
-                ctx.beginPath();
-                ctx.arc(data.centerX, data.centerY, data.ringRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = COLOR_STD_HEX; // Neue Standardfarbe
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            }
-        }
-
-        function animate() {
-            if (!els.anim.checked) return;
-            const speed = parseInt(els.speed.input.value);
-            const increment = speed * 0.05; 
-            let currentAngle = parseFloat(els.angle.input.value);
-            currentAngle = (currentAngle + increment) % 360;
-            els.angle.input.value = currentAngle;
-            render();
-            animationFrameId = requestAnimationFrame(animate);
-        }
-
-        els.anim.addEventListener('change', () => {
-            if (els.anim.checked) animate();
-            else if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        });
-
-        function exportSVG() {
-            const data = getRenderData();
-            const includeBg = els.bgExport.checked;
-            
-            let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${data.width} ${data.height}" width="${data.width}px" height="${data.height}px">`;
-            
-            svg += `<defs>`;
-            
-            // Background Plane Gradient
-            // Force circle via userSpaceOnUse so it doesn't skew on wide screens
-            const maxDim = Math.max(data.width, data.height);
-            // r should be roughly enough to cover corners. 71% of maxDim centered.
-            svg += `
-                <radialGradient id="bgGrad" cx="${data.width/2}" cy="${data.height/2}" r="${maxDim * 0.71}" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" style="stop-color:#001e45;stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:#000510;stop-opacity:1" />
-                </radialGradient>
-            `;
-            
-            // Sphere Linear Gradient
-            if (data.showSphere || data.showInnerSphere) {
-                const cosA = Math.cos(data.angleRad);
-                const sinA = Math.sin(data.angleRad);
-                
-                const x1 = 0.5 + cosA * 0.5;
-                const y1 = 0.5 + sinA * 0.5;
-                const x2 = 0.5 - cosA * 0.5;
-                const y2 = 0.5 - sinA * 0.5;
-
-                svg += `
-                <linearGradient id="sphereGrad" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">
-                    <stop offset="0%" style="stop-color:${COLOR_STD_HEX};stop-opacity:0.2" />
-                    <stop offset="100%" style="stop-color:${COLOR_STD_HEX};stop-opacity:0" />
-                </linearGradient>
-                `;
-            }
-            
-            svg += `</defs>`;
-            
-            if (includeBg) {
-                svg += `<rect width="100%" height="100%" fill="url(#bgGrad)"/>`;
-            }
-
-            // Export Sphere
-            if (data.showSphere) {
-                svg += `<circle cx="${data.centerX}" cy="${data.centerY}" r="${data.sphereRadius}" fill="url(#sphereGrad)" />`;
-            }
-            
-            // Export Inner Sphere
-            if (data.showInnerSphere) {
-                svg += `<circle cx="${data.centerX}" cy="${data.centerY}" r="${data.innerSphereRadius}" fill="url(#sphereGrad)" />`;
-            }
-
-            // Connections
-            if (data.showConn) {
-                const lines = calculateConnections(data);
-                lines.forEach(line => {
-                     const op = line.opacity.toFixed(3);
-                     const c = line.p1.color;
-                     const colStr = `rgb(${c[0]},${c[1]},${c[2]})`;
-                     svg += `<line x1="${line.p1.x}" y1="${line.p1.y}" x2="${line.p2.x}" y2="${line.p2.y}" stroke="${colStr}" stroke-opacity="${op}" stroke-width="0.5" />`;
-                });
-            }
-
-            // Symbols
-            data.points.forEach(p => {
-                let drawScale = p.intensity;
-                let opacity = p.intensity.toFixed(2);
-                let fill = `rgb(${p.color[0]}, ${p.color[1]}, ${p.color[2]})`;
-                if (data.sizeMode) {
-                    opacity = "1";
-                    drawScale = Math.pow(p.intensity, 1.5);
+            const len = gridCache.length;
+            for (let i = 0; i < len; i++) {
+                const item = gridCache[i];
+                const cell = item.el;
+                const cx = cell.offsetLeft + (activeGridSize / 2); const cy = cell.offsetTop + (activeGridSize / 2);
+                const dx = cx - localMx; const dy = cy - localMy;
+                if (dx*dx + dy*dy < radiusSq) {
+                    const key = item.key;
+                    let d = state.modifiedCells.get(key) || { scale: 1.0, thMulti: 1.0 };
+                    d = { ...d }; 
+                    let inf = 1; 
+                    if (state.useInfluence) { inf = 1 - (Math.sqrt(dx*dx + dy*dy) / radius); if (inf < 0) inf = 0; }
+                    if (state.paintTargetScale) {
+                        if (state.activeTool === 'plus') d.scale += growthRate * inf;
+                        else if (state.activeTool === 'minus') { d.scale -= growthRate * inf; if(d.scale<0) d.scale=0; }
+                        else if (state.activeTool === 'delete') d.scale = state.useInfluence ? d.scale*(1-(0.1*inf)) : 0;
+                    }
+                    if (state.paintTargetThickness) {
+                        if (state.activeTool === 'plus') d.thMulti += growthRate * inf;
+                        else if (state.activeTool === 'minus') { d.thMulti -= growthRate * inf; if(d.thMulti<0) d.thMulti=0; }
+                        else if (state.activeTool === 'delete') d.thMulti = state.useInfluence ? d.thMulti*(1-(0.1*inf)) : 0;
+                    }
+                    state.modifiedCells.set(key, d);
+                    updateCellVisual(item, d);
                 }
-                const d = getPlusPathData(p.x, p.y, drawScale, p.spacing, data.maxSizeFactor);
-                const opacityAttr = opacity === "1" ? "" : `fill-opacity="${opacity}"`;
-                svg += `<path d="${d}" fill="${fill}" ${opacityAttr} />`;
-            });
-
-            // Export Ring (Last = On Top)
-            if (data.showRing) {
-                svg += `<circle cx="${data.centerX}" cy="${data.centerY}" r="${data.ringRadius}" fill="none" stroke="${COLOR_STD_HEX}" stroke-width="1.5" />`;
             }
-
-            svg += `</svg>`;
-            const blob = new Blob([svg], {type: "image/svg+xml;charset=utf-8"});
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `moon_pattern_${Date.now()}.svg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
 
-        window.addEventListener('resize', resize);
-        function queueRender() {
-            if (els.anim.checked && this !== els.anim) return; 
-            render();
+        function recalcGridGeometry() {
+            const activeGridSize = Math.max(state.spacing, state.size);
+            const w = ui.mainArea.clientWidth || window.innerWidth;
+            const h = ui.mainArea.clientHeight || window.innerHeight;
+            const cols = Math.ceil((w * 1.2) / activeGridSize) + ((Math.ceil((w * 1.2) / activeGridSize) % 2 === 0) ? 5 : 4);
+            const rows = Math.ceil((h * 1.2) / activeGridSize) + ((Math.ceil((h * 1.2) / activeGridSize) % 2 === 0) ? 5 : 4);
+            ui.root.style.setProperty('--col-count', cols);
+            const total = cols * rows; const safe = Math.min(total, 5000);
+            if(ui.statItems) ui.statItems.innerText = safe + " Items";
+            if (ui.gridContainer.childElementCount !== safe || ui.gridContainer.dataset.cols != cols) {
+                renderGridItems(safe, cols, rows);
+                ui.gridContainer.dataset.cols = cols;
+            }
         }
 
-        Object.values(els).forEach(el => {
-            if (el === els.anim) return; 
-            if (Array.isArray(el)) {
-                el.forEach(c => c.addEventListener('input', queueRender));
+        function renderGridItems(count, cols, rows) {
+            const frag = document.createDocumentFragment();
+            ui.gridContainer.innerHTML = '';
+            gridCache = [];
+            const cc = Math.floor(cols / 2); const cr = Math.floor(rows / 2);
+            for (let i = 0; i < count; i++) {
+                const c = i % cols; const r = Math.floor(i / cols);
+                const lx = c - cc; const ly = r - cr;
+                const div = document.createElement('div');
+                div.className = 'plus-shape'; div.dataset.x = lx; div.dataset.y = ly;
+                const h = document.createElement('div'); h.className = 'bar-h';
+                const v = document.createElement('div'); v.className = 'bar-v';
+                div.appendChild(h); div.appendChild(v);
+                const key = `${lx},${ly}`;
+                const item = { el: div, x: lx, y: ly, key: key, paintScale: 1.0 };
+                gridCache.push(item);
+                if (state.modifiedCells.has(key)) { const d = state.modifiedCells.get(key); updateCellVisual(item, d); }
+                frag.appendChild(div);
+            }
+            ui.gridContainer.appendChild(frag);
+        }
+
+        function updateBgTransform() { ui.root.style.setProperty('--bg-x', `${state.bgX}px`); ui.root.style.setProperty('--bg-y', `${state.bgY}px`); ui.root.style.setProperty('--bg-scale', state.bgScale); }
+
+        function updateInteractionStates() {
+            if (state.isPaintMode) {
+                ui.mainArea.classList.add('is-painting'); ui.brushCursor.style.display = 'block';
+                ui.mainArea.classList.remove('is-editing-grad', 'is-editing-bg');
+                ui.checkBgEdit.disabled = true; ui.checkGradEdit.disabled = true; ui.checkPlusGradEdit.disabled = true;
+                if(ui.labelBgEdit) ui.labelBgEdit.classList.add('opacity-50');
+                return;
             } else {
-                if(el.input) el.input.addEventListener('input', queueRender);
-                else el.addEventListener('change', queueRender); 
+                ui.mainArea.classList.remove('is-painting'); ui.brushCursor.style.display = 'none';
+            }
+            if (state.isEditingGrad || state.isEditingPlusGrad) {
+                ui.mainArea.classList.add('is-editing-grad'); ui.mainArea.classList.remove('is-editing-bg');
+                if (state.isEditingGrad) { ui.checkPlusGradEdit.disabled = true; ui.checkGradEdit.disabled = false; } 
+                else { ui.checkGradEdit.disabled = true; ui.checkPlusGradEdit.disabled = false; }
+                ui.checkEditMode.disabled = true; ui.checkBgEdit.disabled = true;
+                if(ui.labelBgEdit) ui.labelBgEdit.classList.add('opacity-50');
+            } else {
+                ui.mainArea.classList.remove('is-editing-grad');
+                ui.checkGradEdit.disabled = false; ui.checkPlusGradEdit.disabled = false; ui.checkEditMode.disabled = false;
+                if (state.bgImageSrc) {
+                    ui.checkBgEdit.disabled = false; if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50');
+                    if (ui.checkBgEdit.checked) { ui.mainArea.classList.add('is-editing-bg'); ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); state.isEditingBg = true; } 
+                    else { ui.mainArea.classList.remove('is-editing-bg'); ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); state.isEditingBg = false; }
+                }
+            }
+        }
+        function deactivateGradientMode() { 
+            state.isEditingGrad = false; ui.checkGradEdit.checked = false; 
+            state.isEditingPlusGrad = false; ui.checkPlusGradEdit.checked = false;
+            updateInteractionStates(); 
+        }
+        
+        function randomizeConfig() {
+            state.size = Math.floor(Math.random() * 150) + 20;
+            state.thicknessPercent = (Math.random() * 50) + 5;
+            state.spacing = Math.floor(Math.random() * 150) + 50;
+            const rHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            state.bgColor1 = rHex(); state.bgColor2 = rHex();
+            state.hasGradient = Math.random() > 0.5; state.gradientAngle = Math.floor(Math.random() * 360);
+            state.plusColor.gradient = Math.random() > 0.5; state.plusColor.col1 = rHex(); state.plusColor.col2 = rHex(); state.plusGradientAngle = Math.floor(Math.random() * 360);
+            state.animation.active = Math.random() > 0.6;
+            if(state.animation.active) { state.animation.intensity = Math.random(); state.animation.speed = 0.5 + Math.random() * 3; state.animation.randomness = Math.random(); }
+            state.depth.active = Math.random() > 0.7;
+            if(state.depth.active) { state.depth.strength = Math.floor(Math.random() * 15) + 1; state.depth.threshold = 0.5 + Math.random() * 2; }
+
+            ui.inputSize.value = state.size; ui.inputThickness.value = state.thicknessPercent; ui.inputSpacing.value = state.spacing;
+            ui.inputColor1.value = state.bgColor1; ui.inputColor2.value = state.bgColor2; ui.checkGradient.checked = state.hasGradient;
+            ui.checkPlusGradient.checked = state.plusColor.gradient; ui.inputPlusCol1.value = state.plusColor.col1; ui.inputPlusCol2.value = state.plusColor.col2;
+            ui.checkAnimation.checked = state.animation.active; ui.inputAnimIntensity.value = state.animation.intensity * 100; ui.inputAnimRandom.value = state.animation.randomness * 100; ui.inputAnimSpeed.value = state.animation.speed * 10;
+            if(state.animation.active) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); }
+            ui.checkDepth.checked = state.depth.active; ui.inputDepthStrength.value = state.depth.strength; ui.inputDepthThreshold.value = state.depth.threshold;
+            if(state.depth.active) ui.depthControls.classList.remove('hidden'); else ui.depthControls.classList.add('hidden');
+            
+            updateVisuals();
+            if(ui.dispSize) ui.dispSize.innerText = state.size + 'px'; if(ui.dispThickness) ui.dispThickness.innerText = state.thicknessPercent.toFixed(1) + '%'; if(ui.dispSpacing) ui.dispSpacing.innerText = state.spacing + 'px';
+            if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText = Math.floor(state.animation.intensity*100) + '%'; if(ui.dispAnimRandom) ui.dispAnimRandom.innerText = Math.floor(state.animation.randomness*100) + '%'; if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText = state.animation.speed.toFixed(1) + 'x';
+            if(ui.dispDepthStrength) ui.dispDepthStrength.innerText = state.depth.strength; if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText = state.depth.threshold.toFixed(1) + 'x';
+        }
+
+        if (ui.btnRandom) ui.btnRandom.addEventListener('click', randomizeConfig);
+        
+        if (ui.btnToolClearAll) ui.btnToolClearAll.addEventListener('click', () => {
+            const len = gridCache.length;
+            for(let i=0; i<len; i++) {
+                const item = gridCache[i]; const key = item.key;
+                let d = state.modifiedCells.get(key) || { scale: 1.0, thMulti: 1.0 };
+                d = { ...d, scale: 0 }; state.modifiedCells.set(key, d); updateCellVisual(item, d);
             }
         });
 
-        setTimeout(resize, 100); 
+        if (ui.checkAnimation) ui.checkAnimation.addEventListener('change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
+        if (ui.inputAnimIntensity) ui.inputAnimIntensity.addEventListener('input', e => { state.animation.intensity = parseInt(e.target.value)/100; if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText=e.target.value+'%'; });
+        if (ui.inputAnimRandom) ui.inputAnimRandom.addEventListener('input', e => { state.animation.randomness = parseInt(e.target.value)/100; if(ui.dispAnimRandom) ui.dispAnimRandom.innerText=e.target.value+'%'; });
+        if (ui.inputAnimSpeed) ui.inputAnimSpeed.addEventListener('input', e => { state.animation.speed = parseInt(e.target.value)/10; if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText=state.animation.speed+'x'; });
+        
+        if (ui.checkDepth) ui.checkDepth.addEventListener('change', e => { state.depth.active = e.target.checked; if(e.target.checked) ui.depthControls.classList.remove('hidden'); else ui.depthControls.classList.add('hidden'); updateVisuals(); });
+        if (ui.inputDepthStrength) ui.inputDepthStrength.addEventListener('input', e => { state.depth.strength = parseInt(e.target.value); if(ui.dispDepthStrength) ui.dispDepthStrength.innerText=state.depth.strength; updateVisuals(); });
+        if (ui.inputDepthThreshold) ui.inputDepthThreshold.addEventListener('input', e => { state.depth.threshold = parseFloat(e.target.value); if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText=state.depth.threshold+'x'; updateVisuals(); });
+
+        if (ui.checkPlusColor) ui.checkPlusColor.addEventListener('change', e => { state.plusColor.active = e.target.checked; updateVisuals(); });
+        if (ui.checkPlusGradient) ui.checkPlusGradient.addEventListener('change', e => { state.plusColor.gradient = e.target.checked; updateVisuals(); });
+        if (ui.inputPlusCol1) ui.inputPlusCol1.addEventListener('input', e => { state.plusColor.col1 = e.target.value; updateVisuals(); });
+        if (ui.inputPlusCol2) ui.inputPlusCol2.addEventListener('input', e => { state.plusColor.col2 = e.target.value; updateVisuals(); });
+        if (ui.checkPlusGradEdit) ui.checkPlusGradEdit.addEventListener('change', e => { state.isEditingPlusGrad = e.target.checked; updateInteractionStates(); });
+
+        if (ui.checkEditMode) ui.checkEditMode.addEventListener('change', e => { state.isPaintMode = e.target.checked; if(e.target.checked) { ui.editModeControls.classList.remove('hidden'); ui.mainArea.classList.add('is-painting'); ui.brushCursor.style.display='block'; ui.checkBgEdit.checked=false; ui.checkGradEdit.checked=false; state.isEditingBg=false; state.isEditingGrad=false; } else { ui.editModeControls.classList.add('hidden'); ui.mainArea.classList.remove('is-painting'); ui.brushCursor.style.display='none'; } });
+        if (ui.checkPaintScale) ui.checkPaintScale.addEventListener('change', e => state.paintTargetScale = e.target.checked);
+        if (ui.checkPaintThickness) ui.checkPaintThickness.addEventListener('change', e => state.paintTargetThickness = e.target.checked);
+        if (ui.inputBrushSize) ui.inputBrushSize.addEventListener('input', e => { state.brushSize = parseInt(e.target.value); if(ui.dispBrushSize) ui.dispBrushSize.innerText=state.brushSize+'px'; updateVisuals(); });
+        if (ui.checkInfluence) ui.checkInfluence.addEventListener('change', e => state.useInfluence = e.target.checked);
+        
+        if (ui.btnToolPlus) ui.btnToolPlus.addEventListener('click', () => setTool('plus')); 
+        if (ui.btnToolMinus) ui.btnToolMinus.addEventListener('click', () => setTool('minus')); 
+        if (ui.btnToolDelete) ui.btnToolDelete.addEventListener('click', () => setTool('delete'));
+        function setTool(t) { state.activeTool = t; ui.btnToolPlus.classList.remove('active'); ui.btnToolMinus.classList.remove('active'); ui.btnToolDelete.classList.remove('active'); if(t==='plus') ui.btnToolPlus.classList.add('active'); if(t==='minus') ui.btnToolMinus.classList.add('active'); if(t==='delete') ui.btnToolDelete.classList.add('active'); }
+
+        if (ui.inputSize) ui.inputSize.addEventListener('input', e => { state.size = parseInt(e.target.value); if(ui.dispSize) ui.dispSize.innerText=state.size+'px'; updateVisuals(); });
+        if (ui.inputThickness) ui.inputThickness.addEventListener('input', e => { state.thicknessPercent = parseFloat(e.target.value); if(ui.dispThickness) ui.dispThickness.innerText=parseFloat(e.target.value).toFixed(1)+'%'; updateVisuals(); });
+        if (ui.inputSpacing) ui.inputSpacing.addEventListener('input', e => { state.spacing = parseInt(e.target.value); if(ui.dispSpacing) ui.dispSpacing.innerText=state.spacing+'px'; updateVisuals(); });
+        if (ui.inputColor1) ui.inputColor1.addEventListener('input', e => { state.bgColor1 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        if (ui.inputColor2) ui.inputColor2.addEventListener('input', e => { state.bgColor2 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        if (ui.checkGradient) ui.checkGradient.addEventListener('change', e => { state.hasGradient = e.target.checked; updateVisuals(); });
+        
+        function toggleSidebar() { ui.sidebar.classList.toggle('collapsed'); setTimeout(recalcGridGeometry, 310); }
+        if (ui.btnToggleMenu) ui.btnToggleMenu.addEventListener('click', toggleSidebar);
+        if (ui.btnCloseSidebar) ui.btnCloseSidebar.addEventListener('click', toggleSidebar);
+
+        if (ui.inputBgScale) ui.inputBgScale.addEventListener('input', e => { state.bgScale = parseFloat(e.target.value); if(ui.dispBgScale) ui.dispBgScale.innerText=state.bgScale+'x'; updateBgTransform(); });
+        if (ui.checkBgMultiply) ui.checkBgMultiply.addEventListener('change', e => { state.bgMultiply = e.target.checked; updateVisuals(); });
+        if (ui.checkBgMono) ui.checkBgMono.addEventListener('change', e => { state.bgMono = e.target.checked; updateVisuals(); });
+        if (ui.inputBgOpacity) ui.inputBgOpacity.addEventListener('input', e => { state.bgOpacity = parseInt(e.target.value); if(ui.dispBgOpacity) ui.dispBgOpacity.innerText=state.bgOpacity+'%'; updateVisuals(); });
+        if (ui.checkGradEdit) ui.checkGradEdit.addEventListener('change', e => { state.isEditingGrad = e.target.checked; updateInteractionStates(); });
+        if (ui.checkBgEdit) ui.checkBgEdit.addEventListener('change', e => { 
+            state.isEditingBg = e.target.checked; 
+            if (e.target.checked) ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); 
+            else ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); 
+            updateInteractionStates(); 
+        });
+
+        if (ui.mainArea) ui.mainArea.addEventListener('pointermove', e => {
+            const rect = ui.mainArea.getBoundingClientRect(); state.mouseX = e.clientX; state.mouseY = e.clientY;
+            ui.root.style.setProperty('--brush-x', `${e.clientX - rect.left}px`); ui.root.style.setProperty('--brush-y', `${e.clientY - rect.top}px`);
+            
+            if (!state.isPaintMode && state.isDragging) {
+                // Gradient Editing
+                if (state.isEditingGrad || state.isEditingPlusGrad) {
+                    const dx = e.clientX - state.startX; const dy = e.clientY - state.startY;
+                    const currentRelX = e.clientX - rect.left; const currentRelY = e.clientY - rect.top;
+                    ui.gradLineVisual.setAttribute('x2', currentRelX); ui.gradLineVisual.setAttribute('y2', currentRelY);
+                    ui.gradEndPoint.setAttribute('cx', currentRelX); ui.gradEndPoint.setAttribute('cy', currentRelY);
+                    const rad = Math.atan2(dy, dx); let deg = rad * (180 / Math.PI) + 90; 
+                    
+                    if (state.isEditingGrad) state.gradientAngle = Math.round(deg);
+                    else state.plusGradientAngle = Math.round(deg);
+                    
+                    updateVisuals();
+                } else if (state.isEditingBg && state.bgImageSrc) {
+                    const dx = e.clientX - state.lastMouseX; const dy = e.clientY - state.lastMouseY;
+                    state.bgX += dx; state.bgY += dy; state.lastMouseX = e.clientX; state.lastMouseY = e.clientY; updateBgTransform();
+                }
+            }
+        });
+        if (ui.mainArea) ui.mainArea.addEventListener('pointerdown', e => { 
+            if(state.isPaintMode) { state.isPainting=true; updatePaintLoop(); applyBrush(e.clientX, e.clientY); } 
+            else {
+                state.isDragging = true; state.startX = e.clientX; state.startY = e.clientY;
+                if (state.isEditingGrad || state.isEditingPlusGrad) {
+                    const rect = ui.mainArea.getBoundingClientRect(); const relX = e.clientX - rect.left; const relY = e.clientY - rect.top;
+                    ui.gradLineVisual.style.display = 'block'; ui.gradLineSvg.style.display = 'block'; 
+                    ui.gradLineVisual.setAttribute('x1', relX); ui.gradLineVisual.setAttribute('y1', relY); ui.gradLineVisual.setAttribute('x2', relX); ui.gradLineVisual.setAttribute('y2', relY); ui.gradStartPoint.setAttribute('cx', relX); ui.gradStartPoint.setAttribute('cy', relY); ui.gradEndPoint.setAttribute('cx', relX); ui.gradEndPoint.setAttribute('cy', relY);
+                } else if (state.isEditingBg) { state.lastMouseX = e.clientX; state.lastMouseY = e.clientY; }
+            }
+        });
+        window.addEventListener('pointerup', () => { state.isDragging = false; state.isPainting = false; if (state.isEditingGrad || state.isEditingPlusGrad) ui.gradLineSvg.style.display = 'none'; });
+        window.addEventListener('resize', () => recalcGridGeometry());
+
+        // -- DRAG & DROP --
+        let dragCounter = 0;
+        function handleDragEnter(e) { e.preventDefault(); e.stopPropagation(); dragCounter++; if (dragCounter > 0) ui.dropOverlay.style.display = 'flex'; }
+        function handleDragLeave(e) { e.preventDefault(); e.stopPropagation(); dragCounter--; if (dragCounter <= 0) { ui.dropOverlay.style.display = 'none'; dragCounter = 0; } }
+        function handleDragOver(e) { e.preventDefault(); e.stopPropagation(); }
+        function handleDrop(e) {
+            e.preventDefault(); e.stopPropagation(); dragCounter = 0; ui.dropOverlay.style.display = 'none';
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.bgImageSrc = evt.target.result; ui.bgImageElement.src = state.bgImageSrc; ui.bgImageElement.style.display = 'block';
+                        const scaleW = ui.mainArea.clientWidth / img.width; const scaleH = ui.mainArea.clientHeight / img.height;
+                        const initialScale = Math.max(scaleW, scaleH); state.bgScale = initialScale; state.bgX = 0; state.bgY = 0;
+                        ui.inputBgScale.value = initialScale; updateBgTransform(); ui.checkBgEdit.disabled = false; if(ui.labelBgEdit) ui.labelBgEdit.classList.remove('opacity-50');
+                    };
+                    img.src = evt.target.result;
+                };
+                reader.readAsDataURL(files[0]);
+            }
+        }
+        window.addEventListener('dragenter', handleDragEnter); window.addEventListener('dragleave', handleDragLeave); window.addEventListener('dragover', handleDragOver); window.addEventListener('drop', handleDrop);
+
+        // --- PNG EXPORT FUNCTION ---
+        function downloadPNG() {
+            const canvas = document.createElement('canvas'); const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight; canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d');
+            if (ui.checkExportBg.checked) {
+                if (state.hasGradient) {
+                    const angleRad = (state.gradientAngle - 90) * (Math.PI / 180); const halfDiag = Math.sqrt(w*w + h*h) / 2; const cx = w/2; const cy = h/2;
+                    const x0 = cx - Math.cos(angleRad) * halfDiag; const y0 = cy - Math.sin(angleRad) * halfDiag; const x1 = cx + Math.cos(angleRad) * halfDiag; const y1 = cy + Math.sin(angleRad) * halfDiag;
+                    const grad = ctx.createLinearGradient(x0, y0, x1, y1); grad.addColorStop(0, state.bgColor1); grad.addColorStop(1, state.bgColor2); ctx.fillStyle = grad;
+                } else { ctx.fillStyle = state.bgColor1; }
+                ctx.fillRect(0, 0, w, h);
+                if (state.bgImageSrc && ui.bgImageElement) {
+                    const img = ui.bgImageElement; const naturalW = img.naturalWidth; const naturalH = img.naturalHeight;
+                    ctx.save(); ctx.translate(w/2 + state.bgX, h/2 + state.bgY); ctx.scale(state.bgScale, state.bgScale);
+                    ctx.globalAlpha = state.bgOpacity / 100; if (state.bgMultiply) ctx.globalCompositeOperation = 'multiply'; if (state.bgMono) ctx.filter = 'grayscale(100%)';
+                    ctx.drawImage(img, -naturalW/2, -naturalH/2); ctx.restore();
+                }
+            }
+            const activeGridSize = Math.max(state.spacing, state.size); const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100; const cx = w / 2; const cy = h / 2;
+            const cols = Math.ceil((w * 1.2) / activeGridSize) + 4; const rows = Math.ceil((h * 1.2) / activeGridSize) + 4;
+            const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
+
+            // Helper to create local gradient for a specific bar (matching CSS behavior)
+            const createLocalGradient = (ctx, width, height, angle, c1, c2) => {
+                const angleRad = (angle - 90) * (Math.PI / 180);
+                const halfW = width / 2;
+                const halfH = height / 2;
+                const dist = Math.abs(Math.cos(angleRad) * halfW) + Math.abs(Math.sin(angleRad) * halfH);
+                const dx = Math.cos(angleRad) * dist;
+                const dy = Math.sin(angleRad) * dist;
+                const g = ctx.createLinearGradient(halfW - dx, halfH - dy, halfW + dx, halfH + dy);
+                g.addColorStop(0, c1);
+                g.addColorStop(1, c2);
+                return g;
+            };
+
+            for(let x=startCol; x<=endCol; x++) {
+                for(let y=startRow; y<=endRow; y++) {
+                    const px = cx + x * activeGridSize; const py = cy + y * activeGridSize;
+                    let s = 1.0; let t = 1.0; const k = `${x},${y}`;
+                    if(state.modifiedCells.has(k)) { const d = state.modifiedCells.get(k); s = d.scale; t = d.thMulti; }
+                    if (s > 0.05) {
+                        const cS = bS * s; // Length
+                        const cT = bT * t * s; // Thickness
+                        
+                        // Draw Horizontal Bar
+                        ctx.save();
+                        ctx.translate(px - cS/2, py - cT/2);
+                        if (state.depth.active && s > state.depth.threshold) { const blurPx = (s - state.depth.threshold) * state.depth.strength; if (blurPx > 0) ctx.filter = `blur(${blurPx}px)`; }
+                        
+                        if (state.plusColor.gradient) {
+                             ctx.fillStyle = createLocalGradient(ctx, cS, cT, state.plusGradientAngle, state.plusColor.col1, state.plusColor.col2);
+                        } else {
+                             ctx.fillStyle = state.plusColor.col1;
+                        }
+                        ctx.fillRect(0, 0, cS, cT);
+                        ctx.restore();
+
+                        // Draw Vertical Bar
+                        ctx.save();
+                        ctx.translate(px - cT/2, py - cS/2);
+                        if (state.depth.active && s > state.depth.threshold) { const blurPx = (s - state.depth.threshold) * state.depth.strength; if (blurPx > 0) ctx.filter = `blur(${blurPx}px)`; }
+                        
+                        if (state.plusColor.gradient) {
+                             ctx.fillStyle = createLocalGradient(ctx, cT, cS, state.plusGradientAngle, state.plusColor.col1, state.plusColor.col2);
+                        } else {
+                             ctx.fillStyle = state.plusColor.col1;
+                        }
+                        ctx.fillRect(0, 0, cT, cS);
+                        ctx.restore();
+                    }
+                }
+            }
+            const url = canvas.toDataURL('image/png'); const a = document.createElement('a'); a.href = url; a.download = 'raster_export.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // --- SVG EXPORT FUNCTION ---
+        function downloadSVG() {
+            const w = ui.mainArea.clientWidth; const h = ui.mainArea.clientHeight; const bS = state.size; const bT = (state.size * state.thicknessPercent) / 100;
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+            let defs = "";
+            if (state.hasGradient) defs += `<linearGradient id="gBg" gradientTransform="rotate(${state.gradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.bgColor1}"/><stop offset="100%" stop-color="${state.bgColor2}"/></linearGradient>`;
+            if (state.plusColor.gradient) { defs += `<linearGradient id="gPlus" gradientTransform="rotate(${state.plusGradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.plusColor.col1}"/><stop offset="100%" stop-color="${state.plusColor.col2}"/></linearGradient>`; }
+            if(defs) svg += `<defs>${defs}</defs>`;
+            if (ui.checkExportBg.checked) {
+                if (state.hasGradient) svg += `<rect width="100%" height="100%" fill="url(#gBg)"/>`; else svg += `<rect width="100%" height="100%" fill="${state.bgColor1}"/>`; 
+                if (state.bgImageSrc) {
+                    const nw = ui.bgImageElement.naturalWidth; const nh = ui.bgImageElement.naturalHeight;
+                    let styleStr = ""; if (state.bgMultiply) styleStr += "mix-blend-mode: multiply; "; if (state.bgMono) styleStr += "filter: grayscale(100%); ";
+                    svg += `<g transform="translate(${w/2 + state.bgX}, ${h/2 + state.bgY}) scale(${state.bgScale})" style="${styleStr}" opacity="${state.bgOpacity/100}"><image href="${state.bgImageSrc}" x="${-nw/2}" y="${-nh/2}" width="${nw}" height="${nh}"/></g>`;
+                }
+            }
+            const ags = Math.max(state.spacing, state.size); const cx = w/2; const cy = h/2;
+            const cols = Math.ceil((w * 1.2) / ags) + 4; const rows = Math.ceil((h * 1.2) / ags) + 4;
+            const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
+            let plusFill = `fill="${state.plusColor.col1}"`; if (state.plusColor.gradient) plusFill = 'fill="url(#gPlus)"'; 
+            svg += `<g ${plusFill}>`;
+            for(let x=startCol; x<=endCol; x++) for(let y=startRow; y<=endRow; y++) {
+                const px = cx + x*ags; const py = cy + y*ags;
+                let s = 1.0; let t = 1.0; const k = `${x},${y}`; if(state.modifiedCells.has(k)) { const d=state.modifiedCells.get(k); s=d.scale; t=d.thMulti; }
+                if (s > 0.05) { const cS = bS * s; const cT = bT * t * s; svg += `<rect x="${px-cS/2}" y="${py-cT/2}" width="${cS}" height="${cT}"/><rect x="${px-cT/2}" y="${py-cS/2}" width="${cT}" height="${cS}"/>`; }
+            }
+            svg += `</g></svg>`;
+            const b = new Blob([svg], {type: 'image/svg+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'raster.svg'; a.click();
+        }
+
+        if(ui.btnExport) ui.btnExport.addEventListener('click', () => { const format = ui.inputExportFormat.value; if (format === 'png') { downloadPNG(); } else { downloadSVG(); } });
+
+        updateVisuals();
     </script>
 </body>
 </html>
