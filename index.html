@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
+            /* Grundwerte */
             --size: 30px;            
             --thickness: 5.325px;        
             --grid-size: 100px;
@@ -22,6 +23,11 @@
             --plus-col-2: #00d4ff;
             --plus-grad-angle: 45deg;
             --plus-bg: #ffffff; 
+            --plus-bg-attachment: scroll;
+            
+            /* Dynamische Position für Global Gradient */
+            --global-pos-x: 50%;
+            --global-pos-y: 50%;
             
             /* Bild */
             --bg-image-url: none;
@@ -36,7 +42,6 @@
 
         body { overflow: hidden; user-select: none; }
         
-        /* FIX: Explizite Trennung von Color und Image für zuverlässigen Verlauf */
         main { 
             position: relative; 
             background-color: var(--bg-color-1); 
@@ -44,7 +49,7 @@
             overflow: hidden; 
         }
         main.has-gradient { 
-            background-image: linear-gradient(var(--bg-grad-angle), var(--bg-color-1), var(--bg-color-2)); 
+            background-image: linear-gradient(var(--bg-grad-angle), var(--bg-color-1), var(--bg-color-2)) !important; 
         }
 
         #bg-layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -58,6 +63,7 @@
             justify-content: center; align-content: center; justify-items: center; align-items: center;
             width: auto; height: auto; pointer-events: none; 
             opacity: 0; transition: opacity 0.8s ease-out;
+            will-change: transform;
         }
 
         #intro-layer {
@@ -81,19 +87,67 @@
         #grad-line-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
         #drop-overlay { display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.5); border: 4px dashed #fff; z-index: 60; align-items: center; justify-content: center; font-size: 2rem; color: #fff; font-weight: bold; pointer-events: none; }
 
-        .plus-shape {
-            position: relative; display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; contain: size layout style;
-            --paint-scale: 1; --anim-scale: 1; --th-multi: 1;
+        /* WRAPPER: Zuständig für Position, Layout-Größe (Scharf!) und Blur */
+        .plus-cell {
+            position: relative; 
+            display: flex; justify-content: center; align-items: center;
+            flex-shrink: 0;
+            
+            --paint-scale: 1; 
+            --anim-scale: 1;  
+            --th-multi: 1;
+            
+            /* HYBRID FIX: 
+               Wir berechnen die echte Pixelgröße basierend auf dem Mal-Faktor (--paint-scale).
+               Das zwingt den Browser, das Element in hoher Auflösung zu rendern.
+            */
             width: calc(var(--size) * var(--paint-scale));
             height: calc(var(--size) * var(--paint-scale));
-            transform: scale(var(--anim-scale));
+            
+            /* Der Blur liegt auf dem Wrapper, damit er über die Kanten "glühen" kann */
             filter: blur(var(--local-blur, 0px));
-            will-change: transform, filter; 
+            
+            /* Animation läuft über Transform (Smooth & Performant, wackelt nicht) */
+            transform: scale(var(--anim-scale));
+            
+            will-change: transform, width, height, filter;
         }
-        .bar-h, .bar-v { position: absolute; background: var(--plus-bg); }
-        .bar-h { width: 100%; height: calc(var(--thickness) * var(--th-multi) * var(--paint-scale)); }
-        .bar-v { height: 100%; width: calc(var(--thickness) * var(--th-multi) * var(--paint-scale)); }
+
+        /* SHAPE: Zuständig für Form (Clip-Path) und Farbe */
+        .plus-shape {
+            width: 100%; 
+            height: 100%;
+            
+            background: var(--plus-bg);
+            background-repeat: no-repeat;
+            
+            /* Background Attachment für Global Gradient */
+            background-attachment: var(--plus-bg-attachment);
+            background-position: var(--bg-pos, 0% 0%);
+            background-size: var(--bg-size, auto);
+            
+            /* Dicke berechnen. 
+               Da die Box nun physisch größer ist (width/height), müssen wir auch die Dicke
+               mit dem Skalierungsfaktor multiplizieren, damit die Proportionen stimmen.
+            */
+            --current-th: calc(var(--thickness) * var(--th-multi) * var(--paint-scale));
+            --half-th: calc(var(--current-th) / 2);
+
+            clip-path: polygon(
+                calc(50% - var(--half-th)) 0%, 
+                calc(50% + var(--half-th)) 0%, 
+                calc(50% + var(--half-th)) calc(50% - var(--half-th)), 
+                100% calc(50% - var(--half-th)), 
+                100% calc(50% + var(--half-th)), 
+                calc(50% + var(--half-th)) calc(50% + var(--half-th)), 
+                calc(50% + var(--half-th)) 100%, 
+                calc(50% - var(--half-th)) 100%, 
+                calc(50% - var(--half-th)) calc(50% + var(--half-th)), 
+                0% calc(50% + var(--half-th)), 
+                0% calc(50% - var(--half-th)), 
+                calc(50% - var(--half-th)) calc(50% - var(--half-th))
+            );
+        }
         
         .text-alert { color: #dc2626; font-weight: 700; }
         main.is-editing-bg { cursor: move; cursor: grab; } main.is-editing-bg:active { cursor: grabbing; }
@@ -114,9 +168,10 @@
 <body class="flex w-screen h-screen bg-gray-50 font-sans text-gray-800 text-xs">
 
     <aside id="sidebar" class="w-1/5 min-w-[240px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-2xl relative h-full">
+        <!-- Header -->
         <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-3">
-                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v37 GradFix</p></div>
+                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v45 SharpFix</p></div>
             </div>
             <div class="flex items-center gap-2">
                 <button id="btn-random" class="text-gray-400 hover:text-blue-600 transition-colors" title="Zufallsgenerator">
@@ -191,7 +246,8 @@
                 <div id="depth-controls" class="space-y-1.5 hidden pl-2 border-l-2 border-teal-100">
                     <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
                         <label class="text-[10px] text-gray-500">Stärke</label>
-                        <input type="range" id="input-depth-strength" min="0" max="20" value="5" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                        <!-- Range reduziert auf max 10 für feineres Tuning -->
+                        <input type="range" id="input-depth-strength" min="0" max="10" value="5" step="0.5" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
                         <span id="disp-depth-strength" class="text-[10px] text-gray-500 font-mono text-right">5</span>
                     </div>
                     <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
@@ -261,9 +317,16 @@
                             <input type="color" id="input-plus-col-2" value="#00d4ff" class="w-5 h-5 rounded border-0 cursor-pointer p-0 bg-transparent flex-shrink-0">
                             <span id="val-hex-plus2" class="text-[9px] font-mono text-gray-400">#00d4ff</span>
                         </div>
-                        <div class="flex items-center space-x-1">
-                            <input type="checkbox" id="check-plus-grad-edit" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
-                            <label for="check-plus-grad-edit" class="text-[9px] text-gray-500 cursor-pointer">Richtung ändern</label>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-1">
+                                <input type="checkbox" id="check-plus-grad-edit" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
+                                <label for="check-plus-grad-edit" class="text-[9px] text-gray-500 cursor-pointer">Richtung</label>
+                            </div>
+                            <!-- NEU: Gesamtverlauf Checkbox -->
+                            <div class="flex items-center space-x-1">
+                                <input type="checkbox" id="check-plus-global-grad" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
+                                <label for="check-plus-global-grad" class="text-[9px] text-gray-500 cursor-pointer">Gesamt</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -335,7 +398,9 @@
             </div>
         </div>
 
+        <!-- Footer / Export fixed bottom -->
         <div class="p-3 border-t border-gray-200 bg-gray-50 shrink-0 space-y-2">
+            <!-- Format Auswahl & Checkbox -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <select id="input-export-format" class="text-[10px] border-gray-300 rounded bg-white text-gray-600 py-0.5 pl-1 pr-4 h-6 border focus:ring-0 focus:border-blue-500 cursor-pointer">
@@ -380,7 +445,7 @@
             size: 30, thicknessPercent: 17.75, spacing: 100,
             animation: { active: false, intensity: 0.5, randomness: 0.2, speed: 1.5, startTime: 0 },
             depth: { active: false, strength: 5, threshold: 1.0 },
-            plusColor: { active: false, gradient: false, col1: '#ffffff', col2: '#00d4ff' },
+            plusColor: { active: false, gradient: false, globalGrad: false, col1: '#ffffff', col2: '#00d4ff' },
             plusGradientAngle: 45, isEditingPlusGrad: false,
             isPaintMode: false, brushSize: 100, activeTool: 'plus', useInfluence: false,
             modifiedCells: new Map(), isPainting: false, paintTargetScale: true, paintTargetThickness: false,
@@ -391,39 +456,43 @@
 
         let gridCache = [];
 
+        // --- SAFE BINDING HELPER ---
+        function getEl(id) { return document.getElementById(id); }
+        function bind(id, event, handler) {
+            const el = getEl(id);
+            if (el) el.addEventListener(event, handler);
+        }
+
         const ui = {
-            root: document.documentElement, mainArea: document.getElementById('main-area'), dropOverlay: document.getElementById('drop-overlay'), gridContainer: document.getElementById('grid-container'),
-            sidebar: document.getElementById('sidebar'), btnToggleMenu: document.getElementById('btn-toggle-menu'), btnCloseSidebar: document.getElementById('btn-close-sidebar'), btnRandom: document.getElementById('btn-random'),
-            introLayer: document.getElementById('intro-layer'), introSvg: document.getElementById('intro-svg'), introRestPath: document.getElementById('intro-logo-rest'),
-            checkAnimation: document.getElementById('check-animation'), animControls: document.getElementById('anim-controls'),
-            inputAnimIntensity: document.getElementById('input-anim-intensity'), inputAnimRandom: document.getElementById('input-anim-random'), inputAnimSpeed: document.getElementById('input-anim-speed'),
-            checkDepth: document.getElementById('check-depth'), depthControls: document.getElementById('depth-controls'), 
-            inputDepthStrength: document.getElementById('input-depth-strength'), inputDepthThreshold: document.getElementById('input-depth-threshold'),
-            checkEditMode: document.getElementById('check-edit-mode'), editModeControls: document.getElementById('edit-mode-controls'),
-            checkPaintScale: document.getElementById('check-paint-scale'), checkPaintThickness: document.getElementById('check-paint-thickness'),
-            inputBrushSize: document.getElementById('input-brush-size'),
-            btnToolPlus: document.getElementById('btn-tool-plus'), btnToolMinus: document.getElementById('btn-tool-minus'), btnToolDelete: document.getElementById('btn-tool-delete'), btnToolClearAll: document.getElementById('btn-tool-clear-all'),
-            checkInfluence: document.getElementById('check-influence'), brushCursor: document.getElementById('brush-cursor'),
-            inputSize: document.getElementById('input-size'), inputThickness: document.getElementById('input-thickness'), inputSpacing: document.getElementById('input-spacing'),
-            inputColor1: document.getElementById('input-color-1'), inputColor2: document.getElementById('input-color-2'), 
-            color2Container: document.getElementById('color-2-container'), gradientEditContainer: document.getElementById('gradient-edit-container'), bgGradControls: document.getElementById('bg-grad-controls'),
-            checkGradient: document.getElementById('check-gradient'), checkGradEdit: document.getElementById('check-grad-edit'),
-            checkPlusColor: document.getElementById('check-plus-color'), plusColorControls: document.getElementById('plus-color-controls'),
-            inputPlusCol1: document.getElementById('input-plus-col-1'), inputPlusCol2: document.getElementById('input-plus-col-2'),
-            plusCol2Container: document.getElementById('plus-col-2-container'), checkPlusGradient: document.getElementById('check-plus-gradient'),
-            plusGradControls: document.getElementById('plus-grad-controls'), checkPlusGradEdit: document.getElementById('check-plus-grad-edit'),
-            gradLineSvg: document.getElementById('grad-line-svg'), gradLineVisual: document.getElementById('grad-line-visual'), gradStartPoint: document.getElementById('grad-start-point'), gradEndPoint: document.getElementById('grad-end-point'),
-            checkBgEdit: document.getElementById('check-bg-edit'), labelBgEdit: document.getElementById('label-bg-edit'), bgControls: document.getElementById('bg-controls'),
-            inputBgScale: document.getElementById('input-bg-scale'), checkBgMultiply: document.getElementById('check-bg-multiply'), checkBgMono: document.getElementById('check-bg-mono'), inputBgOpacity: document.getElementById('input-bg-opacity'), bgImageElement: document.getElementById('bg-image-element'),
-            checkExportBg: document.getElementById('check-export-bg'), btnExport: document.getElementById('btn-export'), inputExportFormat: document.getElementById('input-export-format'),
-            valSize: document.getElementById('val-size'), valThicknessPercent: document.getElementById('val-thickness-percent'), valSpacing: document.getElementById('val-spacing'), statItems: document.getElementById('stat-items'),
-            labelSize: document.getElementById('label-size'),
-            dispSize: document.getElementById('disp-size'), dispThickness: document.getElementById('disp-thickness'), dispSpacing: document.getElementById('disp-spacing'),
-            dispDepthStrength: document.getElementById('disp-depth-strength'), dispDepthThreshold: document.getElementById('disp-depth-threshold'),
-            dispAnimIntensity: document.getElementById('disp-anim-intensity'), dispAnimRandom: document.getElementById('disp-anim-random'), dispAnimSpeed: document.getElementById('disp-anim-speed'),
-            dispBgScale: document.getElementById('disp-bg-scale'), dispBgOpacity: document.getElementById('disp-bg-opacity'), dispBrushSize: document.getElementById('disp-brush-size'),
-            valHexBg1: document.getElementById('val-hex-bg1'), valHexBg2: document.getElementById('val-hex-bg2'),
-            valHexPlus1: document.getElementById('val-hex-plus1'), valHexPlus2: document.getElementById('val-hex-plus2'),
+            root: document.documentElement, mainArea: getEl('main-area'), dropOverlay: getEl('drop-overlay'), gridContainer: getEl('grid-container'),
+            sidebar: getEl('sidebar'), btnToggleMenu: getEl('btn-toggle-menu'), btnCloseSidebar: getEl('btn-close-sidebar'), btnRandom: getEl('btn-random'),
+            introLayer: getEl('intro-layer'), introSvg: getEl('intro-svg'), introRestPath: getEl('intro-logo-rest'),
+            // Groups
+            checkAnimation: getEl('check-animation'), animControls: getEl('anim-controls'), inputAnimIntensity: getEl('input-anim-intensity'), inputAnimRandom: getEl('input-anim-random'), inputAnimSpeed: getEl('input-anim-speed'),
+            checkDepth: getEl('check-depth'), depthControls: getEl('depth-controls'), 
+            inputDepthStrength: getEl('input-depth-strength'), inputDepthThreshold: getEl('input-depth-threshold'),
+            checkEditMode: getEl('check-edit-mode'), editModeControls: getEl('edit-mode-controls'),
+            checkPaintScale: getEl('check-paint-scale'), checkPaintThickness: getEl('check-paint-thickness'),
+            inputBrushSize: getEl('input-brush-size'),
+            btnToolPlus: getEl('btn-tool-plus'), btnToolMinus: getEl('btn-tool-minus'), btnToolDelete: getEl('btn-tool-delete'), btnToolClearAll: getEl('btn-tool-clear-all'), checkInfluence: getEl('check-influence'), brushCursor: getEl('brush-cursor'),
+            inputSize: getEl('input-size'), inputThickness: getEl('input-thickness'), inputSpacing: getEl('input-spacing'),
+            inputColor1: getEl('input-color-1'), inputColor2: getEl('input-color-2'), 
+            color2Container: getEl('color-2-container'), gradientEditContainer: getEl('gradient-edit-container'), bgGradControls: getEl('bg-grad-controls'),
+            checkGradient: getEl('check-gradient'), checkGradEdit: getEl('check-grad-edit'),
+            checkPlusColor: getEl('check-plus-color'), plusColorControls: getEl('plus-color-controls'), inputPlusCol1: getEl('input-plus-col-1'), inputPlusCol2: getEl('input-plus-col-2'),
+            plusCol2Container: getEl('plus-col-2-container'), checkPlusGradient: getEl('check-plus-gradient'), plusGradControls: getEl('plus-grad-controls'), checkPlusGradEdit: getEl('check-plus-grad-edit'), checkPlusGlobalGrad: getEl('check-plus-global-grad'),
+            gradLineSvg: getEl('grad-line-svg'), gradLineVisual: getEl('grad-line-visual'), gradStartPoint: getEl('grad-start-point'), gradEndPoint: getEl('grad-end-point'),
+            checkBgEdit: getEl('check-bg-edit'), labelBgEdit: getEl('label-bg-edit'), bgControls: getEl('bg-controls'),
+            inputBgScale: getEl('input-bg-scale'), checkBgMultiply: getEl('check-bg-multiply'), checkBgMono: getEl('check-bg-mono'), inputBgOpacity: getEl('input-bg-opacity'), bgImageElement: getEl('bg-image-element'),
+            checkExportBg: getEl('check-export-bg'), btnExport: getEl('btn-export'), inputExportFormat: getEl('input-export-format'),
+            valSize: getEl('val-size'), valThicknessPercent: getEl('val-thickness-percent'), valSpacing: getEl('val-spacing'), statItems: getEl('stat-items'),
+            labelSize: getEl('label-size'),
+            dispSize: getEl('disp-size'), dispThickness: getEl('disp-thickness'), dispSpacing: getEl('disp-spacing'),
+            dispDepthStrength: getEl('disp-depth-strength'), dispDepthThreshold: getEl('disp-depth-threshold'),
+            dispAnimIntensity: getEl('disp-anim-intensity'), dispAnimRandom: getEl('disp-anim-random'), dispAnimSpeed: getEl('disp-anim-speed'),
+            dispBgScale: getEl('disp-bg-scale'), dispBgOpacity: getEl('disp-bg-opacity'), dispBrushSize: getEl('disp-brush-size'),
+            valHexBg1: getEl('val-hex-bg1'), valHexBg2: getEl('val-hex-bg2'),
+            valHexPlus1: getEl('val-hex-plus1'), valHexPlus2: getEl('val-hex-plus2'),
         };
 
         function simpleHash(x, y) { return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123 - Math.floor(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123); }
@@ -433,28 +502,35 @@
             const t = (performance.now() * 0.001 * state.animation.speed);
             const intensity = state.animation.intensity;
             const randomness = state.animation.randomness;
+
             const len = gridCache.length;
             for (let i = 0; i < len; i++) {
                 const item = gridCache[i];
                 const lx = item.x; const ly = item.y;
                 let baseScale = item.paintScale;
+
                 const w1 = Math.sin(lx * 0.15 + ly * 0.15 + t);
                 const w2 = Math.cos(lx * 0.08 - t * 0.5);
                 const w3 = Math.sin(ly * 0.3 + t * 1.5);
+                
                 const noise = simpleHash(lx, ly) * 2 - 1; 
                 const localTime = t + (noise * randomness * 5.0);
                 const breathe = (Math.sin(localTime) + Math.sin(localTime * 0.5 + lx*0.1)) / 2; 
                 const delta = breathe * intensity * 8.0; 
+                
                 let animatedScaleFactor = (1 + delta);
                 if (animatedScaleFactor < 0) animatedScaleFactor = 0;
-                item.el.style.setProperty('--anim-scale', animatedScaleFactor.toFixed(3));
+
+                // IMPORTANT: Use variable, not transform directly, to preserve manual sizing
+                item.wrapper.style.setProperty('--anim-scale', animatedScaleFactor.toFixed(3));
+                
                 if (state.depth.active) {
                     const totalScale = baseScale * animatedScaleFactor;
                     let blurPx = 0;
                     if (totalScale > state.depth.threshold) {
                         blurPx = (totalScale - state.depth.threshold) * state.depth.strength;
                     }
-                    item.el.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
+                    item.wrapper.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
                 }
             }
             requestAnimationFrame(animationLoop);
@@ -471,15 +547,17 @@
         }
 
         window.addEventListener('load', () => {
-            ui.introLayer.style.opacity = 1;
+            if(ui.introLayer) ui.introLayer.style.opacity = 1;
             setTimeout(() => {
                 const targetScale = calculateIntroScale();
-                ui.introSvg.style.transition = "transform 1.2s cubic-bezier(0.8, 0, 0.2, 1)";
-                ui.introSvg.style.transform = `scale(${targetScale})`;
+                if(ui.introSvg) {
+                    ui.introSvg.style.transition = "transform 1.2s cubic-bezier(0.8, 0, 0.2, 1)";
+                    ui.introSvg.style.transform = `scale(${targetScale})`;
+                }
                 setTimeout(() => { if(ui.introRestPath) ui.introRestPath.style.opacity = 0; }, 200);
-                setTimeout(() => { ui.gridContainer.style.opacity = 1; }, 1200); 
-                setTimeout(() => { ui.introLayer.style.backgroundColor = "transparent"; }, 1000);
-                setTimeout(() => { ui.introLayer.style.opacity = 0; setTimeout(() => { ui.introLayer.style.display = 'none'; }, 500); }, 1400);
+                setTimeout(() => { if(ui.gridContainer) ui.gridContainer.style.opacity = 1; }, 1200); 
+                setTimeout(() => { if(ui.introLayer) ui.introLayer.style.backgroundColor = "transparent"; }, 1000);
+                setTimeout(() => { if(ui.introLayer) { ui.introLayer.style.opacity = 0; setTimeout(() => { ui.introLayer.style.display = 'none'; }, 500); } }, 1400);
             }, 500);
         });
 
@@ -504,11 +582,25 @@
             } else {
                 ui.root.style.setProperty('--plus-bg', state.plusColor.col1);
             }
-
-            // UI Toggles
-            if (state.hasGradient) { ui.bgGradControls.classList.remove('hidden'); } else { ui.bgGradControls.classList.add('hidden'); }
             
-            if (state.plusColor.gradient) { ui.plusGradControls.classList.remove('hidden'); } else { ui.plusGradControls.classList.add('hidden'); }
+            if (state.plusColor.globalGrad) {
+                 ui.root.style.setProperty('--plus-bg-attachment', 'fixed');
+            } else {
+                 ui.root.style.setProperty('--plus-bg-attachment', 'scroll'); 
+            }
+
+            const toggleClass = (el, c, add) => { if(el) add ? el.classList.add(c) : el.classList.remove(c); };
+            const toggleHidden = (el, show) => toggleClass(el, 'hidden', !show);
+
+            if (state.hasGradient) { 
+                if(ui.mainArea) ui.mainArea.classList.add('has-gradient'); 
+                toggleHidden(ui.bgGradControls, true);
+            } else { 
+                if(ui.mainArea) ui.mainArea.classList.remove('has-gradient'); 
+                toggleHidden(ui.bgGradControls, false);
+            }
+
+            toggleHidden(ui.plusGradControls, state.plusColor.gradient);
 
             if(ui.valSize) ui.valSize.innerText = `${state.size}px`;
             if(ui.valThicknessPercent) ui.valThicknessPercent.innerText = `${state.thicknessPercent}%`;
@@ -521,34 +613,75 @@
             if (isGridExpanded && ui.labelSize) ui.labelSize.classList.add('text-alert'); 
             else if (ui.labelSize) ui.labelSize.classList.remove('text-alert');
 
+            // Reset animation state
             if (!state.animation.active) {
                 const len = gridCache.length;
                 for(let i=0; i<len; i++) {
-                    gridCache[i].el.style.setProperty('--anim-scale', 1);
+                    const item = gridCache[i];
+                    item.wrapper.style.setProperty('--anim-scale', '1');
                     if (state.depth.active) {
-                        const s = gridCache[i].paintScale;
+                        const s = item.paintScale;
                         let blurPx = (s > state.depth.threshold) ? (s - state.depth.threshold) * state.depth.strength : 0;
-                        gridCache[i].el.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
+                        item.wrapper.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
                     } else {
-                        gridCache[i].el.style.setProperty('--local-blur', `0px`);
+                        item.wrapper.style.setProperty('--local-blur', `0px`);
                     }
                 }
             }
+            
+            if(state.plusColor.globalGrad) updateGlobalGradientPositions();
+            else resetGlobalGradientPositions();
+
             recalcGridGeometry();
         }
 
+        // Apply visual updates to a specific cell (static properties)
         function updateCellVisual(item, data) {
-            item.el.style.setProperty('--paint-scale', data.scale.toFixed(3));
-            item.el.style.setProperty('--th-multi', data.thMulti);
+            // Static Paint Scale affects the Inner Shape via CSS variable, OR wrapper size?
+            // To support both blur and crisp edges:
+            // 1. Wrapper handles Blur & Animation Transform.
+            // 2. Inner Shape handles Paint Scale (via CSS var to adjust width/height) and Clip Path.
+            
+            item.wrapper.style.setProperty('--paint-scale', data.scale.toFixed(3));
+            item.wrapper.style.setProperty('--th-multi', data.thMulti);
             item.paintScale = data.scale;
+            
+            // Static Blur Check
             if (!state.animation.active) {
                 if (state.depth.active && data.scale > state.depth.threshold) {
                     let blurPx = (data.scale - state.depth.threshold) * state.depth.strength;
-                    item.el.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
+                    item.wrapper.style.setProperty('--local-blur', `${blurPx.toFixed(1)}px`);
                 } else {
-                    item.el.style.setProperty('--local-blur', `0px`);
+                    item.wrapper.style.setProperty('--local-blur', `0px`);
                 }
             }
+        }
+        
+        function updateGlobalGradientPositions() {
+             const vw = window.innerWidth / 2;
+             const vh = window.innerHeight / 2;
+             const activeGridSize = Math.max(state.spacing, state.size);
+             const len = gridCache.length;
+             for(let i=0; i<len; i++) {
+                 const item = gridCache[i];
+                 const offX = item.x * activeGridSize;
+                 const offY = item.y * activeGridSize;
+                 // Set to inner shape
+                 const shape = item.shape;
+                 shape.style.backgroundPosition = `calc(50% - ${offX}px) calc(50% - ${offY}px)`;
+                 shape.style.backgroundSize = '100vw 100vh';
+                 shape.style.backgroundAttachment = 'scroll';
+             }
+        }
+        
+        function resetGlobalGradientPositions() {
+            const len = gridCache.length;
+             for(let i=0; i<len; i++) {
+                 const shape = gridCache[i].shape;
+                 shape.style.backgroundPosition = '';
+                 shape.style.backgroundSize = '';
+                 shape.style.backgroundAttachment = '';
+             }
         }
         
         function updatePaintLoop() { if (state.isPaintMode && state.isPainting) { applyBrush(state.mouseX, state.mouseY); requestAnimationFrame(updatePaintLoop); } }
@@ -563,7 +696,7 @@
             const len = gridCache.length;
             for (let i = 0; i < len; i++) {
                 const item = gridCache[i];
-                const cell = item.el;
+                const cell = item.wrapper; // Hit test on wrapper center
                 const cx = cell.offsetLeft + (activeGridSize / 2); const cy = cell.offsetTop + (activeGridSize / 2);
                 const dx = cx - localMx; const dy = cy - localMy;
                 if (dx*dx + dy*dy < radiusSq) {
@@ -611,18 +744,31 @@
             for (let i = 0; i < count; i++) {
                 const c = i % cols; const r = Math.floor(i / cols);
                 const lx = c - cc; const ly = r - cr;
-                const div = document.createElement('div');
-                div.className = 'plus-shape'; div.dataset.x = lx; div.dataset.y = ly;
-                const h = document.createElement('div'); h.className = 'bar-h';
-                const v = document.createElement('div'); v.className = 'bar-v';
-                div.appendChild(h); div.appendChild(v);
+                
+                // Create Wrapper (Cell) - Handles Blur & Animation Scale
+                const cell = document.createElement('div');
+                cell.className = 'plus-cell';
+                cell.dataset.x = lx; cell.dataset.y = ly;
+                
+                // Create Inner Shape - Handles ClipPath, PaintScale, Color
+                const shape = document.createElement('div');
+                shape.className = 'plus-shape';
+                
+                cell.appendChild(shape);
+                
                 const key = `${lx},${ly}`;
-                const item = { el: div, x: lx, y: ly, key: key, paintScale: 1.0 };
+                const item = { wrapper: cell, shape: shape, x: lx, y: ly, key: key, paintScale: 1.0 };
                 gridCache.push(item);
-                if (state.modifiedCells.has(key)) { const d = state.modifiedCells.get(key); updateCellVisual(item, d); }
-                frag.appendChild(div);
+
+                if (state.modifiedCells.has(key)) {
+                    const d = state.modifiedCells.get(key);
+                    updateCellVisual(item, d);
+                }
+                frag.appendChild(cell);
             }
             ui.gridContainer.appendChild(frag);
+            
+            if (state.plusColor.globalGrad) updateGlobalGradientPositions();
         }
 
         function updateBgTransform() { ui.root.style.setProperty('--bg-x', `${state.bgX}px`); ui.root.style.setProperty('--bg-y', `${state.bgY}px`); ui.root.style.setProperty('--bg-scale', state.bgScale); }
@@ -686,9 +832,8 @@
             if(ui.dispDepthStrength) ui.dispDepthStrength.innerText = state.depth.strength; if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText = state.depth.threshold.toFixed(1) + 'x';
         }
 
-        if (ui.btnRandom) ui.btnRandom.addEventListener('click', randomizeConfig);
-        
-        if (ui.btnToolClearAll) ui.btnToolClearAll.addEventListener('click', () => {
+        bind('btn-random', 'click', randomizeConfig);
+        bind('btn-tool-clear-all', 'click', () => {
             const len = gridCache.length;
             for(let i=0; i<len; i++) {
                 const item = gridCache[i]; const key = item.key;
@@ -697,49 +842,50 @@
             }
         });
 
-        if (ui.checkAnimation) ui.checkAnimation.addEventListener('change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
-        if (ui.inputAnimIntensity) ui.inputAnimIntensity.addEventListener('input', e => { state.animation.intensity = parseInt(e.target.value)/100; if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText=e.target.value+'%'; });
-        if (ui.inputAnimRandom) ui.inputAnimRandom.addEventListener('input', e => { state.animation.randomness = parseInt(e.target.value)/100; if(ui.dispAnimRandom) ui.dispAnimRandom.innerText=e.target.value+'%'; });
-        if (ui.inputAnimSpeed) ui.inputAnimSpeed.addEventListener('input', e => { state.animation.speed = parseInt(e.target.value)/10; if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText=state.animation.speed+'x'; });
+        bind('check-animation', 'change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
+        bind('input-anim-intensity', 'input', e => { state.animation.intensity = parseInt(e.target.value)/100; if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText=e.target.value+'%'; });
+        bind('input-anim-random', 'input', e => { state.animation.randomness = parseInt(e.target.value)/100; if(ui.dispAnimRandom) ui.dispAnimRandom.innerText=e.target.value+'%'; });
+        bind('input-anim-speed', 'input', e => { state.animation.speed = parseInt(e.target.value)/10; if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText=state.animation.speed+'x'; });
         
-        if (ui.checkDepth) ui.checkDepth.addEventListener('change', e => { state.depth.active = e.target.checked; if(e.target.checked) ui.depthControls.classList.remove('hidden'); else ui.depthControls.classList.add('hidden'); updateVisuals(); });
-        if (ui.inputDepthStrength) ui.inputDepthStrength.addEventListener('input', e => { state.depth.strength = parseInt(e.target.value); if(ui.dispDepthStrength) ui.dispDepthStrength.innerText=state.depth.strength; updateVisuals(); });
-        if (ui.inputDepthThreshold) ui.inputDepthThreshold.addEventListener('input', e => { state.depth.threshold = parseFloat(e.target.value); if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText=state.depth.threshold+'x'; updateVisuals(); });
+        bind('check-depth', 'change', e => { state.depth.active = e.target.checked; if(e.target.checked) ui.depthControls.classList.remove('hidden'); else ui.depthControls.classList.add('hidden'); updateVisuals(); });
+        bind('input-depth-strength', 'input', e => { state.depth.strength = parseInt(e.target.value); if(ui.dispDepthStrength) ui.dispDepthStrength.innerText=state.depth.strength; updateVisuals(); });
+        bind('input-depth-threshold', 'input', e => { state.depth.threshold = parseFloat(e.target.value); if(ui.dispDepthThreshold) ui.dispDepthThreshold.innerText=state.depth.threshold+'x'; updateVisuals(); });
 
-        if (ui.checkPlusColor) ui.checkPlusColor.addEventListener('change', e => { state.plusColor.active = e.target.checked; updateVisuals(); });
-        if (ui.checkPlusGradient) ui.checkPlusGradient.addEventListener('change', e => { state.plusColor.gradient = e.target.checked; updateVisuals(); });
-        if (ui.inputPlusCol1) ui.inputPlusCol1.addEventListener('input', e => { state.plusColor.col1 = e.target.value; updateVisuals(); });
-        if (ui.inputPlusCol2) ui.inputPlusCol2.addEventListener('input', e => { state.plusColor.col2 = e.target.value; updateVisuals(); });
-        if (ui.checkPlusGradEdit) ui.checkPlusGradEdit.addEventListener('change', e => { state.isEditingPlusGrad = e.target.checked; updateInteractionStates(); });
+        bind('check-plus-color', 'change', e => { state.plusColor.active = e.target.checked; updateVisuals(); });
+        bind('check-plus-gradient', 'change', e => { state.plusColor.gradient = e.target.checked; updateVisuals(); });
+        bind('input-plus-col-1', 'input', e => { state.plusColor.col1 = e.target.value; updateVisuals(); });
+        bind('input-plus-col-2', 'input', e => { state.plusColor.col2 = e.target.value; updateVisuals(); });
+        bind('check-plus-grad-edit', 'change', e => { state.isEditingPlusGrad = e.target.checked; updateInteractionStates(); });
+        bind('check-plus-global-grad', 'change', e => { state.plusColor.globalGrad = e.target.checked; updateVisuals(); });
 
-        if (ui.checkEditMode) ui.checkEditMode.addEventListener('change', e => { state.isPaintMode = e.target.checked; if(e.target.checked) { ui.editModeControls.classList.remove('hidden'); ui.mainArea.classList.add('is-painting'); ui.brushCursor.style.display='block'; ui.checkBgEdit.checked=false; ui.checkGradEdit.checked=false; state.isEditingBg=false; state.isEditingGrad=false; } else { ui.editModeControls.classList.add('hidden'); ui.mainArea.classList.remove('is-painting'); ui.brushCursor.style.display='none'; } });
-        if (ui.checkPaintScale) ui.checkPaintScale.addEventListener('change', e => state.paintTargetScale = e.target.checked);
-        if (ui.checkPaintThickness) ui.checkPaintThickness.addEventListener('change', e => state.paintTargetThickness = e.target.checked);
-        if (ui.inputBrushSize) ui.inputBrushSize.addEventListener('input', e => { state.brushSize = parseInt(e.target.value); if(ui.dispBrushSize) ui.dispBrushSize.innerText=state.brushSize+'px'; updateVisuals(); });
-        if (ui.checkInfluence) ui.checkInfluence.addEventListener('change', e => state.useInfluence = e.target.checked);
+        bind('check-edit-mode', 'change', e => { state.isPaintMode = e.target.checked; if(e.target.checked) { ui.editModeControls.classList.remove('hidden'); ui.mainArea.classList.add('is-painting'); ui.brushCursor.style.display='block'; ui.checkBgEdit.checked=false; ui.checkGradEdit.checked=false; state.isEditingBg=false; state.isEditingGrad=false; } else { ui.editModeControls.classList.add('hidden'); ui.mainArea.classList.remove('is-painting'); ui.brushCursor.style.display='none'; } });
+        bind('check-paint-scale', 'change', e => state.paintTargetScale = e.target.checked);
+        bind('check-paint-thickness', 'change', e => state.paintTargetThickness = e.target.checked);
+        bind('input-brush-size', 'input', e => { state.brushSize = parseInt(e.target.value); if(ui.dispBrushSize) ui.dispBrushSize.innerText=state.brushSize+'px'; updateVisuals(); });
+        bind('check-influence', 'change', e => state.useInfluence = e.target.checked);
         
-        if (ui.btnToolPlus) ui.btnToolPlus.addEventListener('click', () => setTool('plus')); 
-        if (ui.btnToolMinus) ui.btnToolMinus.addEventListener('click', () => setTool('minus')); 
-        if (ui.btnToolDelete) ui.btnToolDelete.addEventListener('click', () => setTool('delete'));
-        function setTool(t) { state.activeTool = t; ui.btnToolPlus.classList.remove('active'); ui.btnToolMinus.classList.remove('active'); ui.btnToolDelete.classList.remove('active'); if(t==='plus') ui.btnToolPlus.classList.add('active'); if(t==='minus') ui.btnToolMinus.classList.add('active'); if(t==='delete') ui.btnToolDelete.classList.add('active'); }
+        bind('btn-tool-plus', 'click', () => setTool('plus')); 
+        bind('btn-tool-minus', 'click', () => setTool('minus')); 
+        bind('btn-tool-delete', 'click', () => setTool('delete'));
+        function setTool(t) { state.activeTool = t; if(ui.btnToolPlus) ui.btnToolPlus.classList.remove('active'); if(ui.btnToolMinus) ui.btnToolMinus.classList.remove('active'); if(ui.btnToolDelete) ui.btnToolDelete.classList.remove('active'); if(t==='plus' && ui.btnToolPlus) ui.btnToolPlus.classList.add('active'); if(t==='minus' && ui.btnToolMinus) ui.btnToolMinus.classList.add('active'); if(t==='delete' && ui.btnToolDelete) ui.btnToolDelete.classList.add('active'); }
 
-        if (ui.inputSize) ui.inputSize.addEventListener('input', e => { state.size = parseInt(e.target.value); if(ui.dispSize) ui.dispSize.innerText=state.size+'px'; updateVisuals(); });
-        if (ui.inputThickness) ui.inputThickness.addEventListener('input', e => { state.thicknessPercent = parseFloat(e.target.value); if(ui.dispThickness) ui.dispThickness.innerText=parseFloat(e.target.value).toFixed(1)+'%'; updateVisuals(); });
-        if (ui.inputSpacing) ui.inputSpacing.addEventListener('input', e => { state.spacing = parseInt(e.target.value); if(ui.dispSpacing) ui.dispSpacing.innerText=state.spacing+'px'; updateVisuals(); });
-        if (ui.inputColor1) ui.inputColor1.addEventListener('input', e => { state.bgColor1 = e.target.value; deactivateGradientMode(); updateVisuals(); });
-        if (ui.inputColor2) ui.inputColor2.addEventListener('input', e => { state.bgColor2 = e.target.value; deactivateGradientMode(); updateVisuals(); });
-        if (ui.checkGradient) ui.checkGradient.addEventListener('change', e => { state.hasGradient = e.target.checked; updateVisuals(); });
+        bind('input-size', 'input', e => { state.size = parseInt(e.target.value); if(ui.dispSize) ui.dispSize.innerText=state.size+'px'; updateVisuals(); });
+        bind('input-thickness', 'input', e => { state.thicknessPercent = parseFloat(e.target.value); if(ui.dispThickness) ui.dispThickness.innerText=parseFloat(e.target.value).toFixed(1)+'%'; updateVisuals(); });
+        bind('input-spacing', 'input', e => { state.spacing = parseInt(e.target.value); if(ui.dispSpacing) ui.dispSpacing.innerText=state.spacing+'px'; updateVisuals(); });
+        bind('input-color-1', 'input', e => { state.bgColor1 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        bind('input-color-2', 'input', e => { state.bgColor2 = e.target.value; deactivateGradientMode(); updateVisuals(); });
+        bind('check-gradient', 'change', e => { state.hasGradient = e.target.checked; updateVisuals(); });
         
         function toggleSidebar() { ui.sidebar.classList.toggle('collapsed'); setTimeout(recalcGridGeometry, 310); }
-        if (ui.btnToggleMenu) ui.btnToggleMenu.addEventListener('click', toggleSidebar);
-        if (ui.btnCloseSidebar) ui.btnCloseSidebar.addEventListener('click', toggleSidebar);
+        bind('btn-toggle-menu', 'click', toggleSidebar);
+        bind('btn-close-sidebar', 'click', toggleSidebar);
 
-        if (ui.inputBgScale) ui.inputBgScale.addEventListener('input', e => { state.bgScale = parseFloat(e.target.value); if(ui.dispBgScale) ui.dispBgScale.innerText=state.bgScale+'x'; updateBgTransform(); });
-        if (ui.checkBgMultiply) ui.checkBgMultiply.addEventListener('change', e => { state.bgMultiply = e.target.checked; updateVisuals(); });
-        if (ui.checkBgMono) ui.checkBgMono.addEventListener('change', e => { state.bgMono = e.target.checked; updateVisuals(); });
-        if (ui.inputBgOpacity) ui.inputBgOpacity.addEventListener('input', e => { state.bgOpacity = parseInt(e.target.value); if(ui.dispBgOpacity) ui.dispBgOpacity.innerText=state.bgOpacity+'%'; updateVisuals(); });
-        if (ui.checkGradEdit) ui.checkGradEdit.addEventListener('change', e => { state.isEditingGrad = e.target.checked; updateInteractionStates(); });
-        if (ui.checkBgEdit) ui.checkBgEdit.addEventListener('change', e => { 
+        bind('input-bg-scale', 'input', e => { state.bgScale = parseFloat(e.target.value); if(ui.dispBgScale) ui.dispBgScale.innerText=state.bgScale+'x'; updateBgTransform(); });
+        bind('check-bg-multiply', 'change', e => { state.bgMultiply = e.target.checked; updateVisuals(); });
+        bind('check-bg-mono', 'change', e => { state.bgMono = e.target.checked; updateVisuals(); });
+        bind('input-bg-opacity', 'input', e => { state.bgOpacity = parseInt(e.target.value); if(ui.dispBgOpacity) ui.dispBgOpacity.innerText=state.bgOpacity+'%'; updateVisuals(); });
+        bind('check-grad-edit', 'change', e => { state.isEditingGrad = e.target.checked; updateInteractionStates(); });
+        bind('check-bg-edit', 'change', e => { 
             state.isEditingBg = e.target.checked; 
             if (e.target.checked) ui.bgControls.classList.remove('opacity-50', 'pointer-events-none'); 
             else ui.bgControls.classList.add('opacity-50', 'pointer-events-none'); 
@@ -829,17 +975,24 @@
             const cols = Math.ceil((w * 1.2) / activeGridSize) + 4; const rows = Math.ceil((h * 1.2) / activeGridSize) + 4;
             const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
 
-            // Helper to create local gradient for a specific bar (matching CSS behavior)
+            let plusGradCanvas = null;
+            if (state.plusColor.gradient && state.plusColor.globalGrad) {
+                 const angleRad = (state.plusGradientAngle - 90) * (Math.PI / 180);
+                 const halfDiag = Math.sqrt(w*w + h*h) / 2;
+                 const x0 = cx - Math.cos(angleRad) * halfDiag; const y0 = cy - Math.sin(angleRad) * halfDiag;
+                 const x1 = cx + Math.cos(angleRad) * halfDiag; const y1 = cy + Math.sin(angleRad) * halfDiag;
+                 plusGradCanvas = ctx.createLinearGradient(x0, y0, x1, y1);
+                 plusGradCanvas.addColorStop(0, state.plusColor.col1); plusGradCanvas.addColorStop(1, state.plusColor.col2);
+            }
+
+            // Helper for local gradient
             const createLocalGradient = (ctx, width, height, angle, c1, c2) => {
                 const angleRad = (angle - 90) * (Math.PI / 180);
-                const halfW = width / 2;
-                const halfH = height / 2;
+                const halfW = width / 2; const halfH = height / 2;
                 const dist = Math.abs(Math.cos(angleRad) * halfW) + Math.abs(Math.sin(angleRad) * halfH);
-                const dx = Math.cos(angleRad) * dist;
-                const dy = Math.sin(angleRad) * dist;
+                const dx = Math.cos(angleRad) * dist; const dy = Math.sin(angleRad) * dist;
                 const g = ctx.createLinearGradient(halfW - dx, halfH - dy, halfW + dx, halfH + dy);
-                g.addColorStop(0, c1);
-                g.addColorStop(1, c2);
+                g.addColorStop(0, c1); g.addColorStop(1, c2);
                 return g;
             };
 
@@ -849,33 +1002,48 @@
                     let s = 1.0; let t = 1.0; const k = `${x},${y}`;
                     if(state.modifiedCells.has(k)) { const d = state.modifiedCells.get(k); s = d.scale; t = d.thMulti; }
                     if (s > 0.05) {
-                        const cS = bS * s; // Length
-                        const cT = bT * t * s; // Thickness
-                        
-                        // Draw Horizontal Bar
                         ctx.save();
-                        ctx.translate(px - cS/2, py - cT/2);
+                        // Translation
+                        const cS = bS * s; const cT = bT * t * s;
+                        
+                        // Blur
                         if (state.depth.active && s > state.depth.threshold) { const blurPx = (s - state.depth.threshold) * state.depth.strength; if (blurPx > 0) ctx.filter = `blur(${blurPx}px)`; }
                         
+                        // Fill Style
                         if (state.plusColor.gradient) {
-                             ctx.fillStyle = createLocalGradient(ctx, cS, cT, state.plusGradientAngle, state.plusColor.col1, state.plusColor.col2);
+                             if (state.plusColor.globalGrad && plusGradCanvas) {
+                                 ctx.fillStyle = plusGradCanvas;
+                             } else {
+                                 // Local Gradient logic, simplified for polygon as bounding box gradient
+                                 // For precise local gradient on polygon, create gradient relative to bounding box size (cS, cS)
+                                 ctx.fillStyle = createLocalGradient(ctx, cS, cS, state.plusGradientAngle, state.plusColor.col1, state.plusColor.col2);
+                             }
                         } else {
                              ctx.fillStyle = state.plusColor.col1;
                         }
-                        ctx.fillRect(0, 0, cS, cT);
-                        ctx.restore();
 
-                        // Draw Vertical Bar
-                        ctx.save();
-                        ctx.translate(px - cT/2, py - cS/2);
-                        if (state.depth.active && s > state.depth.threshold) { const blurPx = (s - state.depth.threshold) * state.depth.strength; if (blurPx > 0) ctx.filter = `blur(${blurPx}px)`; }
+                        // Drawing Logic for Plus Shape (Polygon) to support smooth gradient
+                        ctx.translate(px, py);
                         
-                        if (state.plusColor.gradient) {
-                             ctx.fillStyle = createLocalGradient(ctx, cT, cS, state.plusGradientAngle, state.plusColor.col1, state.plusColor.col2);
-                        } else {
-                             ctx.fillStyle = state.plusColor.col1;
-                        }
-                        ctx.fillRect(0, 0, cT, cS);
+                        // Define Path (relative to center 0,0)
+                        const halfS = cS / 2;
+                        const halfT = cT / 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-halfT, -halfS);
+                        ctx.lineTo(halfT, -halfS);
+                        ctx.lineTo(halfT, -halfT);
+                        ctx.lineTo(halfS, -halfT);
+                        ctx.lineTo(halfS, halfT);
+                        ctx.lineTo(halfT, halfT);
+                        ctx.lineTo(halfT, halfS);
+                        ctx.lineTo(-halfT, halfS);
+                        ctx.lineTo(-halfT, halfT);
+                        ctx.lineTo(-halfS, halfT);
+                        ctx.lineTo(-halfS, -halfT);
+                        ctx.lineTo(-halfT, -halfT);
+                        ctx.closePath();
+                        
+                        ctx.fill();
                         ctx.restore();
                     }
                 }
@@ -889,8 +1057,17 @@
             let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
             let defs = "";
             if (state.hasGradient) defs += `<linearGradient id="gBg" gradientTransform="rotate(${state.gradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.bgColor1}"/><stop offset="100%" stop-color="${state.bgColor2}"/></linearGradient>`;
-            if (state.plusColor.gradient) { defs += `<linearGradient id="gPlus" gradientTransform="rotate(${state.plusGradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.plusColor.col1}"/><stop offset="100%" stop-color="${state.plusColor.col2}"/></linearGradient>`; }
+            
+            // Plus Gradient Defs
+            if (state.plusColor.gradient) { 
+                if (state.plusColor.globalGrad) {
+                    defs += `<linearGradient id="gPlusGlobal" gradientUnits="userSpaceOnUse" gradientTransform="rotate(${state.plusGradientAngle-90}, ${w/2}, ${h/2})"><stop offset="0%" stop-color="${state.plusColor.col1}"/><stop offset="100%" stop-color="${state.plusColor.col2}"/></linearGradient>`; 
+                } else {
+                    defs += `<linearGradient id="gPlusLocal" gradientTransform="rotate(${state.plusGradientAngle-90}, 0.5, 0.5)"><stop offset="0%" stop-color="${state.plusColor.col1}"/><stop offset="100%" stop-color="${state.plusColor.col2}"/></linearGradient>`; 
+                }
+            }
             if(defs) svg += `<defs>${defs}</defs>`;
+
             if (ui.checkExportBg.checked) {
                 if (state.hasGradient) svg += `<rect width="100%" height="100%" fill="url(#gBg)"/>`; else svg += `<rect width="100%" height="100%" fill="${state.bgColor1}"/>`; 
                 if (state.bgImageSrc) {
@@ -902,18 +1079,28 @@
             const ags = Math.max(state.spacing, state.size); const cx = w/2; const cy = h/2;
             const cols = Math.ceil((w * 1.2) / ags) + 4; const rows = Math.ceil((h * 1.2) / ags) + 4;
             const startCol = -Math.floor(cols/2); const endCol = Math.floor(cols/2); const startRow = -Math.floor(rows/2); const endRow = Math.floor(rows/2);
-            let plusFill = `fill="${state.plusColor.col1}"`; if (state.plusColor.gradient) plusFill = 'fill="url(#gPlus)"'; 
+            let plusFill = `fill="${state.plusColor.col1}"`; 
+            if (state.plusColor.gradient) {
+                if (state.plusColor.globalGrad) plusFill = 'fill="url(#gPlusGlobal)"';
+                else plusFill = 'fill="url(#gPlusLocal)"';
+            }
+
             svg += `<g ${plusFill}>`;
             for(let x=startCol; x<=endCol; x++) for(let y=startRow; y<=endRow; y++) {
                 const px = cx + x*ags; const py = cy + y*ags;
                 let s = 1.0; let t = 1.0; const k = `${x},${y}`; if(state.modifiedCells.has(k)) { const d=state.modifiedCells.get(k); s=d.scale; t=d.thMulti; }
-                if (s > 0.05) { const cS = bS * s; const cT = bT * t * s; svg += `<rect x="${px-cS/2}" y="${py-cT/2}" width="${cS}" height="${cT}"/><rect x="${px-cT/2}" y="${py-cS/2}" width="${cT}" height="${cS}"/>`; }
+                if (s > 0.05) { 
+                    const cS = bS * s; const cT = bT * t * s; 
+                    const halfS = cS/2; const halfT = cT/2;
+                    // Draw Polygon for single shape
+                    svg += `<polygon points="${px-halfT},${py-halfS} ${px+halfT},${py-halfS} ${px+halfT},${py-halfT} ${px+halfS},${py-halfT} ${px+halfS},${py+halfT} ${px+halfT},${py+halfT} ${px+halfT},${py+halfS} ${px-halfT},${py+halfS} ${px-halfT},${py+halfT} ${px-halfS},${py+halfT} ${px-halfS},${py-halfT} ${px-halfT},${py-halfT}"/>`;
+                }
             }
             svg += `</g></svg>`;
             const b = new Blob([svg], {type: 'image/svg+xml'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'raster.svg'; a.click();
         }
 
-        if(ui.btnExport) ui.btnExport.addEventListener('click', () => { const format = ui.inputExportFormat.value; if (format === 'png') { downloadPNG(); } else { downloadSVG(); } });
+        if(ui.btnExport) bind('btn-export', 'click', () => { const format = ui.inputExportFormat.value; if (format === 'png') { downloadPNG(); } else { downloadSVG(); } });
 
         updateVisuals();
     </script>
