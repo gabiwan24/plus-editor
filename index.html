@@ -87,49 +87,36 @@
         #grad-line-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
         #drop-overlay { display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.5); border: 4px dashed #fff; z-index: 60; align-items: center; justify-content: center; font-size: 2rem; color: #fff; font-weight: bold; pointer-events: none; }
 
-        /* WRAPPER: Zuständig für Position, Layout-Größe (Scharf!) und Blur */
+        /* WRAPPER */
         .plus-cell {
             position: relative; 
             display: flex; justify-content: center; align-items: center;
             flex-shrink: 0;
+            contain: layout paint style; 
             
             --paint-scale: 1; 
             --anim-scale: 1;  
             --th-multi: 1;
             
-            /* HYBRID FIX: 
-               Wir berechnen die echte Pixelgröße basierend auf dem Mal-Faktor (--paint-scale).
-               Das zwingt den Browser, das Element in hoher Auflösung zu rendern.
-            */
+            /* HYBRID SKALIERUNG */
             width: calc(var(--size) * var(--paint-scale));
             height: calc(var(--size) * var(--paint-scale));
             
-            /* Der Blur liegt auf dem Wrapper, damit er über die Kanten "glühen" kann */
-            filter: blur(var(--local-blur, 0px));
-            
-            /* Animation läuft über Transform (Smooth & Performant, wackelt nicht) */
             transform: scale(var(--anim-scale));
-            
-            will-change: transform, width, height, filter;
+            filter: blur(var(--local-blur, 0px));
+            will-change: transform, width, height;
         }
 
-        /* SHAPE: Zuständig für Form (Clip-Path) und Farbe */
+        /* SHAPE */
         .plus-shape {
             width: 100%; 
             height: 100%;
-            
             background: var(--plus-bg);
             background-repeat: no-repeat;
-            
-            /* Background Attachment für Global Gradient */
             background-attachment: var(--plus-bg-attachment);
             background-position: var(--bg-pos, 0% 0%);
             background-size: var(--bg-size, auto);
             
-            /* Dicke berechnen. 
-               Da die Box nun physisch größer ist (width/height), müssen wir auch die Dicke
-               mit dem Skalierungsfaktor multiplizieren, damit die Proportionen stimmen.
-            */
             --current-th: calc(var(--thickness) * var(--th-multi) * var(--paint-scale));
             --half-th: calc(var(--current-th) / 2);
 
@@ -171,7 +158,7 @@
         <!-- Header -->
         <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-3">
-                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v45 SharpFix</p></div>
+                <div><h1 class="text-sm font-bold text-gray-900 leading-tight">The Plus is us</h1><p class="text-[10px] text-gray-400">v48 MathWaves</p></div>
             </div>
             <div class="flex items-center gap-2">
                 <button id="btn-random" class="text-gray-400 hover:text-blue-600 transition-colors" title="Zufallsgenerator">
@@ -246,8 +233,7 @@
                 <div id="depth-controls" class="space-y-1.5 hidden pl-2 border-l-2 border-teal-100">
                     <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
                         <label class="text-[10px] text-gray-500">Stärke</label>
-                        <!-- Range reduziert auf max 10 für feineres Tuning -->
-                        <input type="range" id="input-depth-strength" min="0" max="10" value="5" step="0.5" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                        <input type="range" id="input-depth-strength" min="0" max="20" value="5" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500">
                         <span id="disp-depth-strength" class="text-[10px] text-gray-500 font-mono text-right">5</span>
                     </div>
                     <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
@@ -263,7 +249,6 @@
             <!-- 4. Farbe und Verlauf -->
             <div class="space-y-3">
                 <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Farbe & Verlauf</h2>
-                
                 <!-- Hintergrund -->
                 <div class="space-y-1.5">
                     <div class="flex justify-between items-center">
@@ -278,8 +263,6 @@
                             <label for="check-gradient" class="text-[10px] text-gray-500 cursor-pointer">Verlauf</label>
                         </div>
                     </div>
-                    
-                    <!-- Verlauf Controls -->
                     <div id="bg-grad-controls" class="hidden pl-2 space-y-1.5 mt-1 border-l-2 border-purple-100">
                         <div class="flex items-center gap-2">
                             <span class="text-[10px] text-gray-500">Nach:</span>
@@ -292,9 +275,7 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="h-px bg-gray-50 border-t border-dashed border-gray-200"></div>
-
                 <!-- Plus -->
                 <div class="space-y-1.5">
                     <div class="flex justify-between items-center">
@@ -309,8 +290,6 @@
                             <label for="check-plus-gradient" class="text-[10px] text-gray-500 cursor-pointer">Verlauf</label>
                         </div>
                     </div>
-
-                    <!-- Plus Verlauf Controls -->
                     <div id="plus-grad-controls" class="hidden pl-2 space-y-1.5 mt-1 border-l-2 border-indigo-100">
                         <div class="flex items-center gap-2">
                             <span class="text-[10px] text-gray-500">Nach:</span>
@@ -322,7 +301,6 @@
                                 <input type="checkbox" id="check-plus-grad-edit" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
                                 <label for="check-plus-grad-edit" class="text-[9px] text-gray-500 cursor-pointer">Richtung</label>
                             </div>
-                            <!-- NEU: Gesamtverlauf Checkbox -->
                             <div class="flex items-center space-x-1">
                                 <input type="checkbox" id="check-plus-global-grad" class="w-3 h-3 text-indigo-600 rounded border-gray-300">
                                 <label for="check-plus-global-grad" class="text-[9px] text-gray-500 cursor-pointer">Gesamt</label>
@@ -379,6 +357,19 @@
                     </div>
                 </div>
                 <div id="anim-controls" class="space-y-1.5 hidden pl-2 border-l-2 border-orange-100">
+                    
+                    <!-- NEW DROPDOWN FOR ANIM TYPE -->
+                    <div class="grid grid-cols-[60px_1fr] gap-2 items-center">
+                        <label class="text-[10px] text-gray-500">Typ</label>
+                        <select id="input-anim-type" class="h-5 text-[10px] bg-gray-100 rounded border-none focus:ring-0 text-gray-600">
+                            <option value="organic">Organisch</option>
+                            <option value="wave">Welle</option>
+                            <option value="ripple">Ripple</option>
+                            <option value="chaos">Chaos</option>
+                            <option value="breath">Atmen</option>
+                        </select>
+                    </div>
+
                     <div class="grid grid-cols-[60px_1fr_35px] gap-2 items-center">
                         <label class="text-[10px] text-gray-500">Intensität</label>
                         <input type="range" id="input-anim-intensity" min="0" max="100" value="50" class="h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
@@ -400,7 +391,6 @@
 
         <!-- Footer / Export fixed bottom -->
         <div class="p-3 border-t border-gray-200 bg-gray-50 shrink-0 space-y-2">
-            <!-- Format Auswahl & Checkbox -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <select id="input-export-format" class="text-[10px] border-gray-300 rounded bg-white text-gray-600 py-0.5 pl-1 pr-4 h-6 border focus:ring-0 focus:border-blue-500 cursor-pointer">
@@ -443,7 +433,7 @@
     <script>
         const state = {
             size: 30, thicknessPercent: 17.75, spacing: 100,
-            animation: { active: false, intensity: 0.5, randomness: 0.2, speed: 1.5, startTime: 0 },
+            animation: { active: false, intensity: 0.5, randomness: 0.2, speed: 1.5, startTime: 0, type: 'organic' },
             depth: { active: false, strength: 5, threshold: 1.0 },
             plusColor: { active: false, gradient: false, globalGrad: false, col1: '#ffffff', col2: '#00d4ff' },
             plusGradientAngle: 45, isEditingPlusGrad: false,
@@ -468,19 +458,23 @@
             sidebar: getEl('sidebar'), btnToggleMenu: getEl('btn-toggle-menu'), btnCloseSidebar: getEl('btn-close-sidebar'), btnRandom: getEl('btn-random'),
             introLayer: getEl('intro-layer'), introSvg: getEl('intro-svg'), introRestPath: getEl('intro-logo-rest'),
             // Groups
-            checkAnimation: getEl('check-animation'), animControls: getEl('anim-controls'), inputAnimIntensity: getEl('input-anim-intensity'), inputAnimRandom: getEl('input-anim-random'), inputAnimSpeed: getEl('input-anim-speed'),
+            checkAnimation: getEl('check-animation'), animControls: getEl('anim-controls'), inputAnimType: getEl('input-anim-type'),
+            inputAnimIntensity: getEl('input-anim-intensity'), inputAnimRandom: getEl('input-anim-random'), inputAnimSpeed: getEl('input-anim-speed'),
             checkDepth: getEl('check-depth'), depthControls: getEl('depth-controls'), 
             inputDepthStrength: getEl('input-depth-strength'), inputDepthThreshold: getEl('input-depth-threshold'),
             checkEditMode: getEl('check-edit-mode'), editModeControls: getEl('edit-mode-controls'),
             checkPaintScale: getEl('check-paint-scale'), checkPaintThickness: getEl('check-paint-thickness'),
             inputBrushSize: getEl('input-brush-size'),
-            btnToolPlus: getEl('btn-tool-plus'), btnToolMinus: getEl('btn-tool-minus'), btnToolDelete: getEl('btn-tool-delete'), btnToolClearAll: getEl('btn-tool-clear-all'), checkInfluence: getEl('check-influence'), brushCursor: getEl('brush-cursor'),
+            btnToolPlus: getEl('btn-tool-plus'), btnToolMinus: getEl('btn-tool-minus'), btnToolDelete: getEl('btn-tool-delete'), btnToolClearAll: getEl('btn-tool-clear-all'),
+            checkInfluence: getEl('check-influence'), brushCursor: getEl('brush-cursor'),
             inputSize: getEl('input-size'), inputThickness: getEl('input-thickness'), inputSpacing: getEl('input-spacing'),
             inputColor1: getEl('input-color-1'), inputColor2: getEl('input-color-2'), 
             color2Container: getEl('color-2-container'), gradientEditContainer: getEl('gradient-edit-container'), bgGradControls: getEl('bg-grad-controls'),
             checkGradient: getEl('check-gradient'), checkGradEdit: getEl('check-grad-edit'),
-            checkPlusColor: getEl('check-plus-color'), plusColorControls: getEl('plus-color-controls'), inputPlusCol1: getEl('input-plus-col-1'), inputPlusCol2: getEl('input-plus-col-2'),
-            plusCol2Container: getEl('plus-col-2-container'), checkPlusGradient: getEl('check-plus-gradient'), plusGradControls: getEl('plus-grad-controls'), checkPlusGradEdit: getEl('check-plus-grad-edit'), checkPlusGlobalGrad: getEl('check-plus-global-grad'),
+            checkPlusColor: getEl('check-plus-color'), plusColorControls: getEl('plus-color-controls'),
+            inputPlusCol1: getEl('input-plus-col-1'), inputPlusCol2: getEl('input-plus-col-2'),
+            plusCol2Container: getEl('plus-col-2-container'), checkPlusGradient: getEl('check-plus-gradient'),
+            plusGradControls: getEl('plus-grad-controls'), checkPlusGradEdit: getEl('check-plus-grad-edit'), checkPlusGlobalGrad: getEl('check-plus-global-grad'),
             gradLineSvg: getEl('grad-line-svg'), gradLineVisual: getEl('grad-line-visual'), gradStartPoint: getEl('grad-start-point'), gradEndPoint: getEl('grad-end-point'),
             checkBgEdit: getEl('check-bg-edit'), labelBgEdit: getEl('label-bg-edit'), bgControls: getEl('bg-controls'),
             inputBgScale: getEl('input-bg-scale'), checkBgMultiply: getEl('check-bg-multiply'), checkBgMono: getEl('check-bg-mono'), inputBgOpacity: getEl('input-bg-opacity'), bgImageElement: getEl('bg-image-element'),
@@ -509,14 +503,41 @@
                 const lx = item.x; const ly = item.y;
                 let baseScale = item.paintScale;
 
-                const w1 = Math.sin(lx * 0.15 + ly * 0.15 + t);
-                const w2 = Math.cos(lx * 0.08 - t * 0.5);
-                const w3 = Math.sin(ly * 0.3 + t * 1.5);
-                
-                const noise = simpleHash(lx, ly) * 2 - 1; 
-                const localTime = t + (noise * randomness * 5.0);
-                const breathe = (Math.sin(localTime) + Math.sin(localTime * 0.5 + lx*0.1)) / 2; 
-                const delta = breathe * intensity * 8.0; 
+                let waveVal = 0;
+                let noise = simpleHash(lx, ly) * 2 - 1; 
+                let localTime = t + (noise * randomness * 5.0);
+
+                if (state.animation.type === 'organic') {
+                    const w1 = Math.sin(lx * 0.15 + ly * 0.15 + t);
+                    const w2 = Math.cos(lx * 0.08 - t * 0.5);
+                    const w3 = Math.sin(ly * 0.3 + t * 1.5);
+                    let rawWave = (w1 + w2 + w3) / 3; 
+                    // Apply randomness to phase logic (similar to v47)
+                    // Re-calc local breathing
+                    const breathe = (Math.sin(localTime) + Math.sin(localTime * 0.5 + lx*0.1)) / 2;
+                    waveVal = breathe;
+                } else if (state.animation.type === 'wave') {
+                    // Linear wave diagonal
+                    // Randomness affects phase
+                    localTime = t + (noise * randomness * 2.0);
+                    waveVal = Math.sin((lx + ly) * 0.2 - localTime);
+                } else if (state.animation.type === 'ripple') {
+                    const dist = Math.sqrt(lx*lx + ly*ly);
+                    localTime = t + (noise * randomness * 2.0);
+                    waveVal = Math.sin(dist * 0.3 - localTime);
+                } else if (state.animation.type === 'chaos') {
+                    // Chaos: fast flickering noise
+                    // Randomness scales the noise freq?
+                    // Just sin of random large numbers + time
+                    waveVal = Math.sin(t * 5 + simpleHash(lx, ly) * 100 * (1+randomness));
+                } else if (state.animation.type === 'breath') {
+                    // Sync breath
+                    localTime = t + (noise * randomness * 1.0); // Slight offset with randomness
+                    waveVal = Math.sin(localTime);
+                }
+
+                // Map -1..1 to delta scaling
+                const delta = waveVal * intensity * 8.0; 
                 
                 let animatedScaleFactor = (1 + delta);
                 if (animatedScaleFactor < 0) animatedScaleFactor = 0;
@@ -637,11 +658,6 @@
 
         // Apply visual updates to a specific cell (static properties)
         function updateCellVisual(item, data) {
-            // Static Paint Scale affects the Inner Shape via CSS variable, OR wrapper size?
-            // To support both blur and crisp edges:
-            // 1. Wrapper handles Blur & Animation Transform.
-            // 2. Inner Shape handles Paint Scale (via CSS var to adjust width/height) and Clip Path.
-            
             item.wrapper.style.setProperty('--paint-scale', data.scale.toFixed(3));
             item.wrapper.style.setProperty('--th-multi', data.thMulti);
             item.paintScale = data.scale;
@@ -658,15 +674,12 @@
         }
         
         function updateGlobalGradientPositions() {
-             const vw = window.innerWidth / 2;
-             const vh = window.innerHeight / 2;
              const activeGridSize = Math.max(state.spacing, state.size);
              const len = gridCache.length;
              for(let i=0; i<len; i++) {
                  const item = gridCache[i];
                  const offX = item.x * activeGridSize;
                  const offY = item.y * activeGridSize;
-                 // Set to inner shape
                  const shape = item.shape;
                  shape.style.backgroundPosition = `calc(50% - ${offX}px) calc(50% - ${offY}px)`;
                  shape.style.backgroundSize = '100vw 100vh';
@@ -745,15 +758,11 @@
                 const c = i % cols; const r = Math.floor(i / cols);
                 const lx = c - cc; const ly = r - cr;
                 
-                // Create Wrapper (Cell) - Handles Blur & Animation Scale
                 const cell = document.createElement('div');
                 cell.className = 'plus-cell';
                 cell.dataset.x = lx; cell.dataset.y = ly;
-                
-                // Create Inner Shape - Handles ClipPath, PaintScale, Color
                 const shape = document.createElement('div');
                 shape.className = 'plus-shape';
-                
                 cell.appendChild(shape);
                 
                 const key = `${lx},${ly}`;
@@ -843,6 +852,7 @@
         });
 
         bind('check-animation', 'change', e => { state.animation.active = e.target.checked; if(e.target.checked) { ui.animControls.classList.remove('hidden'); animationLoop(); } else { ui.animControls.classList.add('hidden'); updateVisuals(); } });
+        bind('input-anim-type', 'change', e => { state.animation.type = e.target.value; });
         bind('input-anim-intensity', 'input', e => { state.animation.intensity = parseInt(e.target.value)/100; if(ui.dispAnimIntensity) ui.dispAnimIntensity.innerText=e.target.value+'%'; });
         bind('input-anim-random', 'input', e => { state.animation.randomness = parseInt(e.target.value)/100; if(ui.dispAnimRandom) ui.dispAnimRandom.innerText=e.target.value+'%'; });
         bind('input-anim-speed', 'input', e => { state.animation.speed = parseInt(e.target.value)/10; if(ui.dispAnimSpeed) ui.dispAnimSpeed.innerText=state.animation.speed+'x'; });
